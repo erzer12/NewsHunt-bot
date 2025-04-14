@@ -1,0 +1,89 @@
+**Prompt for AI:**  
+"Create a **dynamic, customizable website template** in HTML, CSS, and JavaScript with the following features. Use `<text>` placeholders (e.g., `<text>Company Name</text>`) wherever users need to add custom content. Prioritize clean, modular code with detailed comments for easy editing, duplication, and scalability.  
+
+---
+
+### **1. Core Structure**  
+- **HTML5**:  
+  ```html  
+  <header>  
+    <nav>  
+      <!-- <text>Edit navigation links here</text> -->  
+      <a href="#"><text>Home</text></a>  
+      <a href="#"><text>About</text></a>  
+    </nav>  
+    <h1><text>Your Brand Name</text></h1>  
+  </header>  
+  ```  
+- **Modular Components**: Separate sections (header, footer, cards) in commented blocks for copy-paste reuse.  
+
+---
+
+### **2. Styling (CSS)**  
+- **Variables**:  
+  ```css  
+  :root {  
+    --primary-color: <text>#2a2a2a</text>; /* Edit brand color */  
+    --font-family: <text>'Arial', sans-serif</text>;  
+  }  
+  ```  
+- **Responsive Layouts**: Use CSS Grid/Flexbox with classes like `.grid-<text>3col</text>`.  
+
+---
+
+### **3. Dynamic JavaScript**  
+- **Config File**:  
+  ```javascript  
+  const config = {  
+    companyName: "<text>Your Company</text>",  
+    enableDarkMode: <text>true</text>, // Toggle dark theme  
+    contactEmail: "<text>contact@email.com</text>"  
+  };  
+  ```  
+- **Interactive Features**:  
+  - Image slider with `<text>placeholder.jpg</text>` paths.  
+  - Form validation for `<text class="input-field">Your Email</text>` inputs.  
+
+---
+
+### **4. Customization Guide**  
+- **Replace All `<text>...</text>` Tags**:  
+  ```html  
+  <!-- Example: Update hero section -->  
+  <section class="hero">  
+    <h2><text>Welcome to Our Website</text></h2>  
+    <p><text>Add your tagline here</text></p>  
+  </section>  
+  ```  
+- **File Structure**:  
+  ```  
+  /<text>assets</text>  
+    /css  
+      styles.css <!-- Edit variables here -->  
+    /js  
+      config.js <!-- Toggle features here -->  
+  ```  
+
+---
+
+### **5. Required Features**  
+- Mobile-first responsive design.  
+- SEO-ready `<meta>` tags:  
+  ```html  
+  <meta name="description" content="<text>Website description</text>">  
+  ```  
+- Commented code explaining how to:  
+  - Add/remove sections (e.g., `<!-- <text>Delete this section if unused</text> -->`).  
+  - Duplicate components (e.g., `<!-- Copy this card to add more -->`).  
+
+--- 
+
+**Deliverables**:  
+- A single HTML file with embedded CSS/JS or linked assets.  
+- Every customizable element marked with `<text>...</text>`.  
+- Comments explaining how to edit, duplicate, or delete sections.  
+- No external dependencies unless absolutely necessary."  
+
+---  
+
+This prompt ensures the AI generates a **directly copy-pastable template** with clear `<text>` placeholders for customization. Users only need to replace `<text>...</text>` blocks with their content, edit CSS variables, and toggle features in `config.js`. Comments guide scalability (e.g., adding blog posts or portfolio items).
