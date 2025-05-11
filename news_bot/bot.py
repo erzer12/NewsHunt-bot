@@ -104,8 +104,13 @@ class NewsBot(commands.Bot):
         self.db_init()
 
     async def setup_hook(self):
-        await self.tree.sync()
-        self.post_daily_news.start()
+        try:
+            print("Syncing commands...")
+            await self.tree.sync()
+            print("✅ Commands synced successfully")
+            self.post_daily_news.start()
+        except Exception as e:
+            print(f"❌ Error syncing commands: {e}")
 
     def db_init(self):
         try:
@@ -412,6 +417,11 @@ async def summarize_article(url):
 @client.event
 async def on_ready():
     print(f'✅ Logged in as {client.user.name}')
+    try:
+        synced = await client.tree.sync()
+        print(f"Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(f"❌ Failed to sync commands: {e}")
 
 def main():
     print("🤖 Starting News Bot...")
