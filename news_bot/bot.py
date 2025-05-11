@@ -108,16 +108,21 @@ class NewsBot(commands.Bot):
         self.post_daily_news.start()
 
     def db_init(self):
-        conn = sqlite3.connect('newsbot.db')
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS guild_settings
-                    (guild_id INTEGER PRIMARY KEY, news_channel_id INTEGER, daily_news INTEGER)''')
-        c.execute('''CREATE TABLE IF NOT EXISTS user_preferences
-                    (user_id INTEGER PRIMARY KEY, country TEXT, category TEXT, article_count INTEGER)''')
-        c.execute('''CREATE TABLE IF NOT EXISTS custom_categories
-                    (category TEXT PRIMARY KEY, description TEXT, usage_count INTEGER DEFAULT 1)''')
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect('newsbot.db')
+            c = conn.cursor()
+            c.execute('''CREATE TABLE IF NOT EXISTS guild_settings
+                        (guild_id INTEGER PRIMARY KEY, news_channel_id INTEGER, daily_news INTEGER)''')
+            c.execute('''CREATE TABLE IF NOT EXISTS user_preferences
+                        (user_id INTEGER PRIMARY KEY, country TEXT, category TEXT, article_count INTEGER)''')
+            c.execute('''CREATE TABLE IF NOT EXISTS custom_categories
+                        (category TEXT PRIMARY KEY, description TEXT, usage_count INTEGER DEFAULT 1)''')
+            conn.commit()
+            print("✅ Database initialized successfully")
+        except sqlite3.Error as e:
+            print(f"❌ Database initialization error: {e}")
+        finally:
+            conn.close()
 
     async def add_custom_category(self, category: str, description: str = "Custom category"):
         conn = sqlite3.connect('newsbot.db')
