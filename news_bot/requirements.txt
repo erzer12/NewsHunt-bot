@@ -1,3 +1,7 @@
+
 discord.py
 requests
 python-dotenv
+openai
+newspaper3k
+lxml[html_clean]
