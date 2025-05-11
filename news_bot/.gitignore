@@ -1,0 +1,116 @@
+# Environment variables
+.env
+*.env
+
+# Database
+*.db
+newsbot.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# NLTK data
+nltk_data/
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+user_prefs.json
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDEs and Editors
+*.swp
+
+# Node.js
+node_modules/
+dist/
+build/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+target/
+
+# C/C++
+*.obj
+*.o
+*.a
+*.so
+*.exe
+
+# C#
+*.dll
+*.pdb
+*.mdb
+*.exe
+
+# Go
+*.exe
+*.test
+*.out
+
+# Ruby
+*.gem
+*.rbc
+.bundle/
+vendor/bundle/
+
+# PHP
+vendor/
+composer.lock
+
+# Rust
+/target/
+
+# Kotlin
+*.iml
+.gradle/
+build/
+
+# Swift
+*.xcodeproj/
+*.xcworkspace/
+*.swiftpm/
+.build/
+
+# Android
+.gradle/
+local.properties
+*keystore*
+build/
+
+# macOS
+*.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Git-specific
+.git/
+.gitignore
