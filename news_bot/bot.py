@@ -182,14 +182,12 @@ def create_news_embed(article, title_prefix=""):
 async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(title="📰 NewsBot Commands", color=discord.Color.blue())
     commands = {
-        "/news": "Get today's top headlines",
         "/search": "Search news by keyword",
         "/category": "Get news by category",
         "/flashnews": "Get breaking news",
         "/setcountry": "Set your preferred country",
         "/setchannel": "Set channel for daily news (Admin only)",
-        "/dailynews": "Toggle daily news updates",
-        "/trending": "View trending topics"
+        "/dailynews": "Toggle daily news updates"
     }
     for cmd, desc in commands.items():
         embed.add_field(name=cmd, value=desc, inline=False)
@@ -302,14 +300,28 @@ async def category(interaction: discord.Interaction, category: str, count: int =
 @client.tree.command(name="flashnews", description="Get breaking news")
 async def flashnews(interaction: discord.Interaction):
     await interaction.response.defer()
-    url = f'https://newsapi.org/v2/top-headlines?apiKey={NEWS_API_KEY}'
+    
+    # Get user's country preference
+    conn = sqlite3.connect('newsbot.db')
+    c = conn.cursor()
+    c.execute("SELECT country FROM user_preferences WHERE user_id = ?", (interaction.user.id,))
+    result = c.fetchone()
+    country = result[0] if result else "us"
+    conn.close()
+
+    # Get breaking news with relevancy sorting
+    url = f'https://newsapi.org/v2/top-headlines?country={country}&sortBy=relevancy&apiKey={NEWS_API_KEY}'
 
     try:
         response = requests.get(url)
         data = response.json()
 
         if data['status'] == 'ok' and data['articles']:
-            article = data['articles'][0]  # Get the most recent breaking news
+            articles = [a for a in data['articles'] if a.get('description') and 'breaking' in a.get('description', '').lower()]
+            if not articles:
+                articles = data['articles']  # Fallback to regular news if no breaking news
+            
+            article = articles[0]  # Get the most relevant breaking news
             embed = create_news_embed(article, "🚨 BREAKING NEWS")
             await interaction.followup.send(embed=embed)
         else:
