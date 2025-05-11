@@ -408,4 +408,9 @@ async def summarize_article(url):
 async def on_ready():
     print(f'✅ Logged in as {client.user.name}')
 
-client.run(DISCORD_TOKEN)
+def main():
+    print("🤖 Starting News Bot...")
+    client.run(DISCORD_TOKEN)
+
+if __name__ == "__main__":
+    main()
