@@ -3,8 +3,17 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 import nltk
 
-nltk.download('punkt')
-nltk.download('stopwords')
+def ensure_nltk_data():
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt')
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords')
+
+ensure_nltk_data()
 
 def local_summarize(text, num_sentences=3):
     sentences = sent_tokenize(text)
