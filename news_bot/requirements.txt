@@ -4,3 +4,5 @@ python-dotenv==0.20.0
 openai==0.27.0
 newspaper3k==0.2.8
 lxml==4.9.1
+nltk==3.8.1
+pymongo==4.7.2
