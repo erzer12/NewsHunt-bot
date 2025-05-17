@@ -1,3 +1,26 @@
+# Environment variables
+.env
+*.env
+
+# Database
+*.db
+newsbot.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# NLTK data
+nltk_data/
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+user_prefs.json
+
 # Logs
 *.log
 npm-debug.log*
@@ -8,23 +31,13 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# IDEs and Editors
-.idea/
-.vscode/
+# Swap files
 *.swp
 
 # Node.js
 node_modules/
 dist/
 build/
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-.env
 
 # Java
 *.class
@@ -80,19 +93,7 @@ build/
 .gradle/
 local.properties
 *keystore*
-.idea/
 build/
-
-# macOS
-*.DS_Store
-
-# Windows
-Thumbs.db
-Desktop.ini
-
-# Temporary files
-*.tmp
-*.temp
 
 # Archives
 *.zip
