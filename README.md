@@ -1,4 +1,4 @@
-# NewsBot
+# NewsHunt
 
 A modular Discord bot for international and local news with automatic translation, country/language preferences, bookmarks, daily news, onboarding, and Render deployment support.
 
