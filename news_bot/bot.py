@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask
 import discord
 from discord.ext import commands
+import sys
 
 from database import init_db
 from commands import setup_commands, start_scheduled_tasks
@@ -34,6 +35,9 @@ def main():
     print("🤖 Starting News Bot...")
     init_db()
     threading.Thread(target=run_web, daemon=True).start()
+    if not DISCORD_TOKEN:
+        print("❌ DISCORD_TOKEN is missing! Please check your .env file.", file=sys.stderr)
+        exit(1)
     bot = NewsBot()
     bot.run(DISCORD_TOKEN)
 
