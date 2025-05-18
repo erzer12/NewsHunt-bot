@@ -27,7 +27,13 @@ async def setup_commands(bot: commands.Bot):
         embed = discord.Embed(
             title="📰 NewsBot Help",
             color=discord.Color.blue(),
-            description="Click the buttons below for command categories or 'Show All'."
+            description=(
+                "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
+                "**Local:** `/localnews`\n"
+                "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
+                "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
+                "**Help:** `/help`"
+            )
         )
         await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
 
@@ -67,22 +73,22 @@ async def setup_commands(bot: commands.Bot):
         else:
             await interaction.followup.send("❌ No news found in this category.")
 
-    @tree.command(name="search", description="Search news by keyword")
-    async def search(interaction: discord.Interaction, query: str, count: int = 5):
+    @tree.command(name="trending", description="Get trending news")
+    async def trending(interaction: discord.Interaction, count: int = 5):
         await send_onboarding(interaction.user)
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
-        articles = fetch_news_by_query(query, count)
+        articles = fetch_trending_news(count)
         if articles:
             for art in articles:
                 art["title"] = translate_text(art["title"], language)
                 art["description"] = translate_text(art.get("description", ""), language)
             view = NewsPaginator(articles, interaction.user.id)
-            embed = create_news_embed(articles[0], f"Search Results: {query}")
+            embed = create_news_embed(articles[0], f"Trending News")
             await interaction.followup.send(embed=embed, view=view)
         else:
-            await interaction.followup.send("❌ No results found.")
+            await interaction.followup.send("❌ No trending news found.")
 
     @tree.command(name="flashnews", description="Get breaking news")
     async def flashnews(interaction: discord.Interaction):
@@ -101,22 +107,33 @@ async def setup_commands(bot: commands.Bot):
         else:
             await interaction.followup.send("❌ No breaking news available.")
 
-    @tree.command(name="trending", description="Get trending news")
-    async def trending(interaction: discord.Interaction, count: int = 5):
+    @tree.command(name="search", description="Search news by keyword")
+    async def search(interaction: discord.Interaction, query: str, count: int = 5):
         await send_onboarding(interaction.user)
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
-        articles = fetch_trending_news(count)
+        articles = fetch_news_by_query(query, count)
         if articles:
             for art in articles:
                 art["title"] = translate_text(art["title"], language)
                 art["description"] = translate_text(art.get("description", ""), language)
             view = NewsPaginator(articles, interaction.user.id)
-            embed = create_news_embed(articles[0], f"Trending News")
+            embed = create_news_embed(articles[0], f"Search Results: {query}")
             await interaction.followup.send(embed=embed, view=view)
         else:
-            await interaction.followup.send("❌ No trending news found.")
+            await interaction.followup.send("❌ No results found.")
+
+    @tree.command(name="summarize", description="Summarize a news article (auto-translated)")
+    async def summarize(interaction: discord.Interaction, url: str):
+        await send_onboarding(interaction.user)
+        await interaction.response.defer()
+        langs = get_user_languages(interaction.user.id)
+        language = langs[0]
+        summary = summarize_article(url)
+        translated = translate_text(summary, language)
+        embed = discord.Embed(title="Article Summary", description=translated, color=discord.Color.blue())
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @tree.command(name="localnews", description="Get the latest local news via RSS")
     async def localnews(interaction: discord.Interaction, place: str):
@@ -134,17 +151,6 @@ async def setup_commands(bot: commands.Bot):
             await interaction.followup.send(embed=embed, view=view)
         else:
             await interaction.followup.send(f"❌ No local news found for '{place}'.")
-
-    @tree.command(name="summarize", description="Summarize a news article (auto-translated)")
-    async def summarize(interaction: discord.Interaction, url: str):
-        await send_onboarding(interaction.user)
-        await interaction.response.defer()
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        summary = summarize_article(url)
-        translated = translate_text(summary, language)
-        embed = discord.Embed(title="Article Summary", description=translated, color=discord.Color.blue())
-        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @tree.command(name="bookmark", description="Bookmark an article")
     async def bookmark(interaction: discord.Interaction, url: str, title: str):
