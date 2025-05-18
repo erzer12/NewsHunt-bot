@@ -6,7 +6,7 @@ from database import (
     add_bookmark, get_bookmarks, remove_bookmark,
     add_user_to_daily_news, remove_user_from_daily_news, get_daily_news_users,
     set_guild_news_channel, get_guild_news_channel,
-    get_all_categories
+    get_all_categories, is_registered, register_user
 )
 from news_api import (
     fetch_top_headlines, fetch_news_by_category, fetch_news_by_query, fetch_trending_news
@@ -15,15 +15,27 @@ from local_news import fetch_rss_news
 from translation import translate_text
 from summarizer import summarize_article
 from views import NewsPaginator, HelpMenuView
-from utils import create_news_embed, get_country_choices, get_category_choices
-from onboard import send_onboarding
+from utils import create_news_embed, get_country_choices, get_category_choices, require_registration
+from onboard import ONBOARD_MSG
 
 async def setup_commands(bot: commands.Bot):
     tree = bot.tree
 
+    @tree.command(name="start", description="Register to use NewsBot and get started")
+    async def start(interaction: discord.Interaction):
+        if is_registered(interaction.user.id):
+            await interaction.response.send_message("You are already registered! Use `/help` to see available commands.", ephemeral=True)
+            return
+        register_user(interaction.user.id)
+        try:
+            await interaction.user.send(ONBOARD_MSG)
+        except Exception:
+            pass  # DM might fail
+        await interaction.response.send_message("✅ You are registered! Check your DMs for a quick setup guide.", ephemeral=True)
+
     @tree.command(name="help", description="Show all available commands")
+    @require_registration()
     async def help_command(interaction: discord.Interaction):
-        await send_onboarding(interaction.user)
         embed = discord.Embed(
             title="📰 NewsBot Help",
             color=discord.Color.blue(),
@@ -38,8 +50,8 @@ async def setup_commands(bot: commands.Bot):
         await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
 
     @tree.command(name="news", description="Get today's top headlines")
+    @require_registration()
     async def news(interaction: discord.Interaction, count: int = 5):
-        await send_onboarding(interaction.user)
         await interaction.response.defer()
         country = get_user_country(interaction.user.id) or "us"
         langs = get_user_languages(interaction.user.id)
@@ -57,8 +69,8 @@ async def setup_commands(bot: commands.Bot):
 
     @tree.command(name="category", description="Get news by category")
     @app_commands.autocomplete(category=get_category_choices)
+    @require_registration()
     async def category(interaction: discord.Interaction, category: str, count: int = 5):
-        await send_onboarding(interaction.user)
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
@@ -74,8 +86,8 @@ async def setup_commands(bot: commands.Bot):
             await interaction.followup.send("❌ No news found in this category.")
 
     @tree.command(name="trending", description="Get trending news")
+    @require_registration()
     async def trending(interaction: discord.Interaction, count: int = 5):
-        await send_onboarding(interaction.user)
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
@@ -91,8 +103,8 @@ async def setup_commands(bot: commands.Bot):
             await interaction.followup.send("❌ No trending news found.")
 
     @tree.command(name="flashnews", description="Get breaking news")
+    @require_registration()
     async def flashnews(interaction: discord.Interaction):
-        await send_onboarding(interaction.user)
         await interaction.response.defer()
         country = get_user_country(interaction.user.id) or "us"
         langs = get_user_languages(interaction.user.id)
@@ -108,8 +120,8 @@ async def setup_commands(bot: commands.Bot):
             await interaction.followup.send("❌ No breaking news available.")
 
     @tree.command(name="search", description="Search news by keyword")
+    @require_registration()
     async def search(interaction: discord.Interaction, query: str, count: int = 5):
-        await send_onboarding(interaction.user)
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
@@ -125,8 +137,8 @@ async def setup_commands(bot: commands.Bot):
             await interaction.followup.send("❌ No results found.")
 
     @tree.command(name="summarize", description="Summarize a news article (auto-translated)")
+    @require_registration()
     async def summarize(interaction: discord.Interaction, url: str):
-        await send_onboarding(interaction.user)
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
@@ -136,8 +148,8 @@ async def setup_commands(bot: commands.Bot):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @tree.command(name="localnews", description="Get the latest local news via RSS")
+    @require_registration()
     async def localnews(interaction: discord.Interaction, place: str):
-        await send_onboarding(interaction.user)
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
@@ -153,14 +165,14 @@ async def setup_commands(bot: commands.Bot):
             await interaction.followup.send(f"❌ No local news found for '{place}'.")
 
     @tree.command(name="bookmark", description="Bookmark an article")
+    @require_registration()
     async def bookmark(interaction: discord.Interaction, url: str, title: str):
-        await send_onboarding(interaction.user)
         add_bookmark(interaction.user.id, url, title)
         await interaction.response.send_message("✅ Article bookmarked!", ephemeral=True)
 
     @tree.command(name="bookmarks", description="List your bookmarks")
+    @require_registration()
     async def bookmarks(interaction: discord.Interaction):
-        await send_onboarding(interaction.user)
         marks = get_bookmarks(interaction.user.id)
         if not marks:
             await interaction.response.send_message("You have no bookmarks.", ephemeral=True)
@@ -176,8 +188,8 @@ async def setup_commands(bot: commands.Bot):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @tree.command(name="remove_bookmark", description="Remove a bookmark by index (starts at 1)")
+    @require_registration()
     async def remove_bookmark_cmd(interaction: discord.Interaction, index: int):
-        await send_onboarding(interaction.user)
         marks = get_bookmarks(interaction.user.id)
         if 0 < index <= len(marks):
             removed = remove_bookmark(interaction.user.id, index-1)
@@ -187,21 +199,21 @@ async def setup_commands(bot: commands.Bot):
 
     @tree.command(name="setcountry", description="Set your preferred country")
     @app_commands.autocomplete(country=get_country_choices)
+    @require_registration()
     async def setcountry(interaction: discord.Interaction, country: str):
-        await send_onboarding(interaction.user)
         set_user_country(interaction.user.id, country)
         await interaction.response.send_message(f"✅ Country set to: {country}", ephemeral=True)
 
     @tree.command(name="setlang", description="Set your preferred news language(s) (comma-separated codes)")
+    @require_registration()
     async def setlang(interaction: discord.Interaction, languages: str):
-        await send_onboarding(interaction.user)
         langs = [l.strip() for l in languages.split(",") if l.strip()]
         set_user_languages(interaction.user.id, langs)
         await interaction.response.send_message(f"✅ Language(s) set to: {', '.join(langs)}.", ephemeral=True)
 
     @tree.command(name="dailynews", description="Toggle your daily news DM digest")
+    @require_registration()
     async def dailynews(interaction: discord.Interaction, enabled: bool):
-        await send_onboarding(interaction.user)
         if enabled:
             add_user_to_daily_news(interaction.user.id)
             await interaction.response.send_message("✅ Daily news enabled! You'll get news in your DMs.", ephemeral=True)
@@ -211,6 +223,7 @@ async def setup_commands(bot: commands.Bot):
 
     @tree.command(name="setchannel", description="Set channel for daily news (Admin only)")
     @app_commands.checks.has_permissions(administrator=True)
+    @require_registration()
     async def setchannel(interaction: discord.Interaction, channel: discord.TextChannel):
         set_guild_news_channel(interaction.guild_id, channel.id)
         await interaction.response.send_message(f"✅ Daily news channel set to: {channel.mention}")
