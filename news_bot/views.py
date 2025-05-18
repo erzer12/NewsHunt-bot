@@ -31,6 +31,8 @@ class NewsPaginator(View):
         self.add_item(self.trash_btn)
 
     def get_embed(self):
+        if not self.articles:
+            return discord.Embed(title="No Articles", description="No articles to display.")
         art = self.articles[self.index]
         title = art.get("title", "No Title")
         url = art.get("url") or art.get("link")
@@ -82,7 +84,10 @@ class NewsPaginator(View):
         await interaction.response.send_message("✅ Bookmarked!", ephemeral=True)
 
     async def delete_msg(self, interaction: discord.Interaction):
-        await interaction.message.delete()
+        try:
+            await interaction.message.delete()
+        except discord.HTTPException:
+            await interaction.response.send_message("Message already deleted.", ephemeral=True)
 
 class HelpMenuView(View):
     def __init__(self):
