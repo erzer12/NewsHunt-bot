@@ -1,5 +1,19 @@
 import discord
 from database import get_all_categories
+from database import is_registered
+
+def require_registration():
+    def decorator(func):
+        async def wrapper(interaction, *args, **kwargs):
+            if not is_registered(interaction.user.id):
+                await interaction.response.send_message(
+                    "🚫 You need to register first! Use `/start` to begin.",
+                    ephemeral=True
+                )
+                return
+            return await func(interaction, *args, **kwargs)
+        return wrapper
+    return decorator
 
 COUNTRY_MAPPING = {
     "united states": "us",
