@@ -38,6 +38,17 @@ def init_db():
         for name, desc in default_categories.items():
             db.categories.insert_one({"name": name, "description": desc})
 
+def is_registered(user_id):
+    doc = db.user_preferences.find_one({"user_id": user_id})
+    return doc is not None
+
+def register_user(user_id):
+    db.user_preferences.update_one(
+        {"user_id": user_id},
+        {"$setOnInsert": {"user_id": user_id}},
+        upsert=True
+    )
+
 def set_user_country(user_id, country):
     db.user_preferences.update_one(
         {"user_id": user_id},
@@ -103,14 +114,3 @@ def remove_user_from_daily_news(user_id):
 
 def get_daily_news_users():
     return [u["user_id"] for u in db.daily_news_users.find({})]
-
-def mark_onboarded(user_id):
-    db.user_preferences.update_one(
-        {"user_id": user_id},
-        {"$set": {"onboarded": True}},
-        upsert=True
-    )
-
-def has_onboarded(user_id):
-    doc = db.user_preferences.find_one({"user_id": user_id})
-    return doc.get("onboarded", False) if doc else False
