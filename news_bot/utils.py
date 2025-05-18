@@ -10,22 +10,27 @@ COUNTRY_MAPPING = {
     # Add more mappings as needed
 }
 
-def create_news_embed(article, title_prefix=""):
+def create_news_embed(article, title_prefix="", is_rss=False):
+    title = article.get("title", "No Title")
+    url = article.get("url") or article.get("link")
+    desc = article.get("description") or article.get("summary") or ""
     embed = discord.Embed(
-        title=f"{title_prefix} {article['title']}",
-        url=article['url'],
-        description=article.get('description', '') or '',
+        title=f"{title_prefix} {title}",
+        url=url,
+        description=desc[:2048],
         color=discord.Color.blue()
     )
-    if article.get('urlToImage'):
-        embed.set_image(url=article['urlToImage'])
-    source = article.get('source', {}).get('name', 'Unknown')
+    if article.get("urlToImage"):
+        embed.set_image(url=article["urlToImage"])
+    source = article.get("source", {}).get("name", "RSS" if is_rss else "Unknown")
     embed.add_field(name="Source", value=source)
-    embed.set_footer(text=f"Published at: {article.get('publishedAt', 'Unknown')}")
+    if article.get("publishedAt"):
+        embed.set_footer(text=f"Published at: {article['publishedAt']}")
+    elif article.get("published"):
+        embed.set_footer(text=article["published"])
     return embed
 
 async def get_country_choices(interaction: discord.Interaction, current: str):
-    # For autocomplete
     items = [("us", "United States"), ("in", "India"), ("gb", "United Kingdom"), ("au", "Australia"), ("ca", "Canada")]
     return [
         discord.app_commands.Choice(name=f"{name} ({code})", value=code)

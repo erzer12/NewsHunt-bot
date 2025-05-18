@@ -10,7 +10,8 @@ def fetch_top_headlines(country="us", count=5, breaking=False):
     if data.get("status") == "ok":
         articles = data.get("articles", [])
         if breaking:
-            articles = [a for a in articles if a.get('description') and 'breaking' in a.get('description', '').lower()]
+            # Simulate breaking as those with "breaking" in title/desc
+            articles = [a for a in articles if 'breaking' in (a.get('title','') + a.get('description','')).lower()]
             if not articles:
                 articles = data.get("articles", [])
         return articles[:count]

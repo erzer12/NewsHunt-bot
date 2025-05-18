@@ -1,78 +1,127 @@
-# News Hunt 🤖
+# NewsBot
 
-A powerful Discord bot built with Python that delivers customizable news updates using NewsAPI integration and cloud MongoDB storage. Stay informed with real-time news directly in your Discord server!
+A modular Discord bot for international and local news with automatic translation, country/language preferences, bookmarks, daily news, onboarding, and Render deployment support.
 
-## Technologies Used 🛠️
-- **Python 3.12** - Core programming language
-- **discord.py** - Discord API wrapper for Python
-- **NLTK** - Natural Language Processing for article summarization
-- **NewsAPI** - Real-time news data source
-- **newspaper3k** - Article extraction and parsing
-- **MongoDB (Atlas/Cloud)** - Scalable NoSQL cloud database for user data, preferences, and bookmarks
-- **pymongo** - MongoDB driver for Python
+---
 
-## Features 📰
+## Features
+- Get top headlines from NewsAPI in your preferred language.
+- Fetch local/city news via Google News RSS, translated to your language.
+- Set country and preferred languages.
+- Bookmarks, daily news, onboarding, and more.
+- Interactive paginator for browsing news.
+- Admin channel setup for daily news.
+- Summarize articles.
+- Search, trending, flash/breaking news.
+- Runs as a web service for Render deployment (Flask for health checks).
 
-### News Delivery
-- Real-time news updates
-- Breaking news alerts
-- Trending news
-- Daily news automation (DM or channel)
-- Customizable news preferences
-- Category-based filtering
-- Country-specific news
+---
 
-### Article Management
-- Smart article summarization
-- Interactive navigation (pagination, bookmark, summarize)
-- Article search functionality
-- Source credibility tracking
+## Setup
 
-### Customization
-- Configurable news channels
-- User preference management
-- Adjustable update frequency
+1. Copy `.env.example` to `.env` and fill out credentials.
+2. `pip install -r requirements.txt`
+3. `python bot.py`
 
-### Commands
-- `/news` - Get today's top headlines
-- `/search` - Search news by keyword
-- `/category` - Get news by category
-- `/trending` - Get trending news
-- `/flashnews` - Get breaking news
-- `/bookmark` - Bookmark an article
-- `/bookmarks` - List your bookmarks
-- `/remove_bookmark` - Remove a bookmark by index
-- `/setcountry` - Set preferred country
-- `/setchannel` - Set channel for daily news
-- `/dailynews` - Toggle daily news updates
-- `/help` - Show all available commands
+**Python version:**  
+Tested on **Python 3.10+**
 
-## Setup 🚀
+**Main dependencies:**  
+- discord.py ≥ 2.3
+- pymongo ≥ 4.5
+- requests ≥ 2.31
+- feedparser ≥ 6.0
+- googletrans == 4.0.0rc1
+- flask ≥ 2.2
+- newspaper3k ≥ 0.2
+- nltk ≥ 3.8
 
-1. Copy `.env.example` to `.env` and fill in your API keys and MongoDB connection string.
-2. Install dependencies:  
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run:  
-   ```bash
-   python bot.py
-   ```
+See `requirements.txt` for details.
 
-## Environment Variables
+---
 
-- `DISCORD_TOKEN`: Your Discord bot token
-- `NEWS_API_KEY`: NewsAPI key
-- `OPENAI_API_KEY`: OpenAI key (if used)
-- `CHANNEL_ID`: Default channel for daily news
-- `MONGODB_URI`: Your cloud MongoDB connection string (e.g., from MongoDB Atlas)
-- `MONGODB_DB`: Database name (default: `newsbot`)
+## Commands
 
-## MongoDB
+- `/news` — Top headlines (auto-translated)
+- `/localnews <place>` — Local news (auto-translated)
+- `/setcountry <country>` — Set country
+- `/setlang <codes>` — Set preferred language codes (comma-separated)
+- `/bookmark <url> <title>` — Bookmark an article
+- `/bookmarks` — List bookmarks
+- `/remove_bookmark <index>` — Remove bookmark by index (starts at 1)
+- `/dailynews <true|false>` — Enable/disable daily news DM
+- `/category <cat>` — Category news
+- `/trending` — Trending news
+- `/flashnews` — Breaking news
+- `/search <keyword>` — Search news
+- `/summarize <url>` — Summarize article
+- `/setchannel <channel>` — Set server channel for daily news (admin)
+- `/help` — Show all bot commands (also triggers onboarding once per user)
 
-This bot uses MongoDB Atlas or any cloud MongoDB for storing user data, bookmarks, and preferences.  
-**No local DB files are needed.**
+---
 
-## Contributing 🤝
+## Environment
 
-Feel free to fork this repository and submit pull requests to contribute to this project!
+- **MongoDB**: Used for all user data and preferences.
+- **Flask**: For web server/health check on Render.
+- **Render**: Deploy with `render.yaml` in root.
+
+---
+
+## Version History & Logs
+
+### v1.3.0 (2025-05-18)
+- Full modular rewrite
+- One-time onboarding per user
+- Slash command autocomplete (category/country)
+- Interactive paginator for news browsing
+- Summarizer command and button
+- Admin-only `/setchannel`
+- Trending, flash, category, and search commands
+- Command logging (see below)
+
+### v1.2.0
+- Bookmarks overhaul (add/remove/list)
+- Daily news scheduling with MongoDB
+- Local news via RSS
+
+### v1.1.0
+- Automatic translation for all news
+- Per-user country/language preferences
+
+### v1.0.0
+- Initial version
+- Top headlines, onboarding, basic commands
+
+---
+
+## Command Logs
+
+- Logs are printed to stdout (console) for each command executed, user, and relevant arguments.
+- For persistent logs, run with e.g. `python bot.py > logs.txt 2>&1`
+- For advanced logging, you can add Python logging (see below for a starter snippet):
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    filename="newsbot.log",
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+logging.info("Bot started.")
+```
+
+---
+
+## Render
+
+Keep `render.yaml` in the root for automatic deployment.
+
+---
+
+## License
+
+MIT (add your details here)
+
+---

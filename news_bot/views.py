@@ -1,114 +1,159 @@
 import discord
+from discord.ui import View, Button
 from summarizer import summarize_article
-from utils import create_news_embed
+from database import add_bookmark
+from translation import translate_text
 
-class NewsPaginator(discord.ui.View):
-    def __init__(self, articles, user_id):
+class NewsPaginator(View):
+    def __init__(self, articles, user_id, is_rss=False):
         super().__init__(timeout=180)
         self.articles = articles
-        self.current_page = 0
         self.user_id = user_id
+        self.is_rss = is_rss
+        self.index = 0
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.gray)
-    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.prev_btn = Button(emoji="⬅️", style=discord.ButtonStyle.secondary)
+        self.next_btn = Button(emoji="➡️", style=discord.ButtonStyle.secondary)
+        self.summarize_btn = Button(label="Summarize", style=discord.ButtonStyle.primary)
+        self.bookmark_btn = Button(emoji="🔖", style=discord.ButtonStyle.success)
+        self.trash_btn = Button(emoji="🗑️", style=discord.ButtonStyle.danger)
+
+        self.prev_btn.callback = self.prev_article
+        self.next_btn.callback = self.next_article
+        self.summarize_btn.callback = self.summarize_article
+        self.bookmark_btn.callback = self.bookmark_article
+        self.trash_btn.callback = self.delete_msg
+
+        self.add_item(self.prev_btn)
+        self.add_item(self.next_btn)
+        self.add_item(self.summarize_btn)
+        self.add_item(self.bookmark_btn)
+        self.add_item(self.trash_btn)
+
+    def get_embed(self):
+        art = self.articles[self.index]
+        title = art.get("title", "No Title")
+        url = art.get("url") or art.get("link")
+        desc = art.get("description") or art.get("summary") or ""
+        embed = discord.Embed(
+            title=f"{title}",
+            url=url,
+            description=desc[:2048]
+        )
+        if art.get("published"):
+            embed.set_footer(text=art["published"])
+        return embed
+
+    async def update_message(self, interaction):
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    async def prev_article(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("Only the command invoker can use the paginator.", ephemeral=True)
+            await interaction.response.send_message("Not your paginator.", ephemeral=True)
             return
-        if self.current_page > 0:
-            self.current_page -= 1
-            await self.update_page(interaction)
+        self.index = (self.index - 1) % len(self.articles)
+        await self.update_message(interaction)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.gray)
-    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def next_article(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("Only the command invoker can use the paginator.", ephemeral=True)
+            await interaction.response.send_message("Not your paginator.", ephemeral=True)
             return
-        if self.current_page < len(self.articles) - 1:
-            self.current_page += 1
-            await self.update_page(interaction)
+        self.index = (self.index + 1) % len(self.articles)
+        await self.update_message(interaction)
 
-    @discord.ui.button(label="Summarize", style=discord.ButtonStyle.primary)
-    async def summarize(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        article = self.articles[self.current_page]
-        summary = summarize_article(article['url'])
-        embed = discord.Embed(title="Article Summary", description=summary, color=discord.Color.blue())
-        await interaction.followup.send(embed=embed, ephemeral=True)
+    async def summarize_article(self, interaction: discord.Interaction):
+        art = self.articles[self.index]
+        url = art.get("url") or art.get("link")
+        summary = summarize_article(url)
+        langs = art.get("language_codes") or ["en"]
+        translated = translate_text(summary, langs[0])
+        embed = discord.Embed(
+            title="Summary",
+            description=translated[:2048],
+            url=url
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @discord.ui.button(label="Bookmark", style=discord.ButtonStyle.success)
-    async def bookmark(self, interaction: discord.Interaction, button: discord.ui.Button):
-        from database import add_bookmark
-        article = self.articles[self.current_page]
-        add_bookmark(interaction.user.id, article['url'], article['title'])
-        await interaction.response.send_message("✅ Article bookmarked!", ephemeral=True)
+    async def bookmark_article(self, interaction: discord.Interaction):
+        art = self.articles[self.index]
+        url = art.get("url") or art.get("link")
+        title = art.get("title", "No Title")
+        add_bookmark(interaction.user.id, url, title)
+        await interaction.response.send_message("✅ Bookmarked!", ephemeral=True)
 
-    async def update_page(self, interaction: discord.Interaction):
-        article = self.articles[self.current_page]
-        embed = create_news_embed(article, f"Article {self.current_page + 1}/{len(self.articles)}")
-        await interaction.response.edit_message(embed=embed, view=self)
+    async def delete_msg(self, interaction: discord.Interaction):
+        await interaction.message.delete()
 
-class HelpMenuView(discord.ui.View):
+class HelpMenuView(View):
     def __init__(self):
         super().__init__(timeout=120)
+        self.show_all_btn = Button(label="Show All", style=discord.ButtonStyle.primary)
+        self.news_btn = Button(label="News Commands", style=discord.ButtonStyle.secondary)
+        self.bookmark_btn = Button(label="Bookmark Commands", style=discord.ButtonStyle.secondary)
+        self.prefs_btn = Button(label="Preferences", style=discord.ButtonStyle.secondary)
+        self.local_btn = Button(label="Local/RSS", style=discord.ButtonStyle.secondary)
 
-    @discord.ui.button(label="General", style=discord.ButtonStyle.primary)
-    async def general(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = discord.Embed(
-            title="General Commands",
-            color=discord.Color.blue(),
-            description=(
-                "/news [count] - Get today's top headlines\n"
-                "/category [category] [count] - Get news by category\n"
-                "/search [query] [count] - Search news by keyword\n"
-                "/trending - Get trending news\n"
-                "/flashnews - Get breaking news"
-            )
-        )
-        await interaction.response.edit_message(embed=embed, view=self)
+        self.show_all_btn.callback = self.show_all
+        self.news_btn.callback = self.show_news
+        self.bookmark_btn.callback = self.show_bookmark
+        self.prefs_btn.callback = self.show_prefs
+        self.local_btn.callback = self.show_local
 
-    @discord.ui.button(label="Bookmarks", style=discord.ButtonStyle.success)
-    async def bookmarks(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = discord.Embed(
-            title="Bookmark Commands",
-            color=discord.Color.green(),
-            description=(
-                "/bookmark - Bookmark the current article\n"
-                "/bookmarks - List your bookmarks\n"
-                "/remove_bookmark [index] - Remove a bookmark"
-            )
-        )
-        await interaction.response.edit_message(embed=embed, view=self)
+        self.add_item(self.show_all_btn)
+        self.add_item(self.news_btn)
+        self.add_item(self.bookmark_btn)
+        self.add_item(self.prefs_btn)
+        self.add_item(self.local_btn)
 
-    @discord.ui.button(label="Preferences", style=discord.ButtonStyle.secondary)
-    async def preferences(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = discord.Embed(
-            title="Preferences & Notifications",
-            color=discord.Color.purple(),
-            description=(
-                "/setcountry [country] - Set your preferred country\n"
-                "/dailynews [on|off] - Daily news DM digest\n"
-                "/setchannel [channel] - Set daily news channel (Admin)"
-            )
-        )
-        await interaction.response.edit_message(embed=embed, view=self)
+    async def show_all(self, interaction):
+        await interaction.response.edit_message(embed=self.get_help_embed("all"), view=self)
 
-    @discord.ui.button(label="Show All", style=discord.ButtonStyle.gray)
-    async def show_all(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = discord.Embed(
-            title="All Commands",
-            color=discord.Color.teal(),
-            description=(
-                "/news [count] - Get today's top headlines\n"
-                "/category [category] [count] - Get news by category\n"
-                "/search [query] [count] - Search news by keyword\n"
-                "/trending - Get trending news\n"
-                "/flashnews - Get breaking news\n"
-                "/bookmark - Bookmark the current article\n"
-                "/bookmarks - List your bookmarks\n"
-                "/remove_bookmark [index] - Remove a bookmark\n"
-                "/setcountry [country] - Set your preferred country\n"
-                "/dailynews [on|off] - Daily news DM digest\n"
-                "/setchannel [channel] - Set daily news channel (Admin)"
+    async def show_news(self, interaction):
+        await interaction.response.edit_message(embed=self.get_help_embed("news"), view=self)
+
+    async def show_bookmark(self, interaction):
+        await interaction.response.edit_message(embed=self.get_help_embed("bookmark"), view=self)
+
+    async def show_prefs(self, interaction):
+        await interaction.response.edit_message(embed=self.get_help_embed("prefs"), view=self)
+
+    async def show_local(self, interaction):
+        await interaction.response.edit_message(embed=self.get_help_embed("local"), view=self)
+
+    def get_help_embed(self, section):
+        embed = discord.Embed(title="📰 NewsBot Help", color=discord.Color.blue())
+        if section == "all":
+            embed.description = (
+                "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`"
+                "\n**Local:** `/localnews`"
+                "\n**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`"
+                "\n**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`"
+                "\n**Help:** `/help`"
             )
-        )
-        await interaction.response.edit_message(embed=embed, view=self)
+        elif section == "news":
+            embed.description = (
+                "`/news [count]` — Top headlines\n"
+                "`/category <cat>` — Category news\n"
+                "`/trending` — Trending\n"
+                "`/flashnews` — Breaking news\n"
+                "`/search <query>` — Search\n"
+                "`/summarize <url>` — Summarize article"
+            )
+        elif section == "bookmark":
+            embed.description = (
+                "`/bookmark <url> <title>` — Bookmark\n"
+                "`/bookmarks` — List bookmarks\n"
+                "`/remove_bookmark <index>` — Remove"
+            )
+        elif section == "prefs":
+            embed.description = (
+                "`/setcountry <code>` — Set country\n"
+                "`/setlang <codes>` — Set language(s)\n"
+                "`/dailynews <on/off>` — Daily news\n"
+                "`/setchannel <channel>` — (admin) set news channel"
+            )
+        elif section == "local":
+            embed.description = (
+                "`/localnews <place>` — Local/city news via RSS"
+            )
+        return embed
