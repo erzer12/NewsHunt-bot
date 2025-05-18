@@ -58,7 +58,7 @@ def set_user_country(user_id, country):
 
 def get_user_country(user_id):
     doc = db.user_preferences.find_one({"user_id": user_id})
-    return doc["country"] if doc and "country" in doc else "us"
+    return doc.get("country", "us") if doc else "us"
 
 def set_user_languages(user_id, languages):
     db.user_preferences.update_one(
@@ -79,7 +79,10 @@ def add_bookmark(user_id, url, title):
     )
 
 def get_bookmarks(user_id):
-    return [(bm["url"], bm["title"]) for bm in db.bookmarks.find({"user_id": user_id})]
+    return [
+        (bm.get("url", ""), bm.get("title", ""))
+        for bm in db.bookmarks.find({"user_id": user_id})
+    ]
 
 def remove_bookmark(user_id, index):
     bookmarks = list(db.bookmarks.find({"user_id": user_id}))
