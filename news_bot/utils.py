@@ -14,21 +14,12 @@ def require_registration():
         return True
     return app_commands.check(predicate)
 
-COUNTRY_MAPPING = {
-    "united states": "us",
-    "india": "in",
-    "united kingdom": "gb",
-    "australia": "au",
-    "canada": "ca"
-    # Add more mappings as needed
-}
-
 def create_news_embed(article, title_prefix="", is_rss=False):
     title = article.get("title", "No Title")
     url = article.get("url") or article.get("link")
     desc = article.get("description") or article.get("summary") or ""
     embed = discord.Embed(
-        title=f"{title_prefix} {title}",
+        title=f"{title_prefix} {title}".strip(),
         url=url,
         description=desc[:2048],
         color=discord.Color.blue()
