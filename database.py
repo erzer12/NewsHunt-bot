@@ -1,42 +1,63 @@
 import os
 from pymongo import MongoClient, ASCENDING
 from dotenv import load_dotenv
+import sys
 
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGODB_URI")
 MONGO_DB = os.getenv("MONGODB_DB", "newsbot")
 
-client = MongoClient(MONGO_URI)
+if not MONGO_URI:
+    print("❌ MONGODB_URI not found in environment variables!", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    client = MongoClient(MONGO_URI)
+    # Test the connection
+    client.admin.command('ping')
+    print("✅ Successfully connected to MongoDB!")
+except Exception as e:
+    print(f"❌ Failed to connect to MongoDB: {e}", file=sys.stderr)
+    sys.exit(1)
+
 db = client[MONGO_DB]
 
 def init_db():
-    db.user_preferences.create_index("user_id", unique=True)
-    db.bookmarks.create_index([("user_id", ASCENDING), ("url", ASCENDING)], unique=True)
-    db.daily_news_users.create_index("user_id", unique=True)
-    db.guild_settings.create_index("guild_id", unique=True)
-    db.categories.create_index("name", unique=True)
-    if db.categories.count_documents({}) == 0:
-        default_categories = {
-            'business': 'Business, finance, stocks, markets, cryptocurrencies, startups, and company news',
-            'entertainment': 'Movies, TV shows, music, celebrities, gaming, streaming, and arts',
-            'technology': 'AI, software, hardware, gadgets, cybersecurity, and tech company updates',
-            'sports': 'Football, basketball, cricket, tennis, F1, Olympics, and athlete updates',
-            'science': 'Space exploration, physics, biology, climate change, and research breakthroughs',
-            'health': 'Medical research, wellness, nutrition, fitness, mental health, and healthcare',
-            'politics': 'Government policies, elections, international relations, and political events',
-            'environment': 'Climate change, sustainability, renewable energy, and conservation',
-            'education': 'Learning trends, academic research, education tech, and student news',
-            'automotive': 'Cars, EVs, automotive industry, and future mobility',
-            'gaming': 'Video games, esports, gaming hardware, and industry updates',
-            'food': 'Culinary trends, restaurants, recipes, and food industry news',
-            'travel': 'Tourism, destinations, travel tips, and industry updates',
-            'fashion': 'Fashion trends, designers, industry news, and lifestyle',
-            'crypto': 'Cryptocurrency, blockchain, NFTs, and digital assets',
-            'general': 'Top headlines and breaking news from around the world'
-        }
-        for name, desc in default_categories.items():
-            db.categories.insert_one({"name": name, "description": desc})
+    try:
+        # Create indexes
+        db.user_preferences.create_index("user_id", unique=True)
+        db.bookmarks.create_index([("user_id", ASCENDING), ("url", ASCENDING)], unique=True)
+        db.daily_news_users.create_index("user_id", unique=True)
+        db.guild_settings.create_index("guild_id", unique=True)
+        db.categories.create_index("name", unique=True)
+        
+        # Initialize default categories if none exist
+        if db.categories.count_documents({}) == 0:
+            default_categories = {
+                'business': 'Business, finance, stocks, markets, cryptocurrencies, startups, and company news',
+                'entertainment': 'Movies, TV shows, music, celebrities, gaming, streaming, and arts',
+                'technology': 'AI, software, hardware, gadgets, cybersecurity, and tech company updates',
+                'sports': 'Football, basketball, cricket, tennis, F1, Olympics, and athlete updates',
+                'science': 'Space exploration, physics, biology, climate change, and research breakthroughs',
+                'health': 'Medical research, wellness, nutrition, fitness, mental health, and healthcare',
+                'politics': 'Government policies, elections, international relations, and political events',
+                'environment': 'Climate change, sustainability, renewable energy, and conservation',
+                'education': 'Learning trends, academic research, education tech, and student news',
+                'automotive': 'Cars, EVs, automotive industry, and future mobility',
+                'gaming': 'Video games, esports, gaming hardware, and industry updates',
+                'food': 'Culinary trends, restaurants, recipes, and food industry news',
+                'travel': 'Tourism, destinations, travel tips, and industry updates',
+                'fashion': 'Fashion trends, designers, industry news, and lifestyle',
+                'crypto': 'Cryptocurrency, blockchain, NFTs, and digital assets',
+                'general': 'Top headlines and breaking news from around the world'
+            }
+            for name, desc in default_categories.items():
+                db.categories.insert_one({"name": name, "description": desc})
+        print("✅ Database initialized successfully!")
+    except Exception as e:
+        print(f"❌ Error initializing database: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def is_registered(user_id):
     doc = db.user_preferences.find_one({"user_id": user_id})

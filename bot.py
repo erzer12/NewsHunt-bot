@@ -28,12 +28,29 @@ class NewsBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
+        print("🔄 Setting up commands...")
         await setup_commands(self)
+        print("✅ Commands setup complete")
+        
+    async def on_ready(self):
+        print(f"✅ Logged in as {self.user.name}")
+        print("🔄 Syncing commands...")
+        try:
+            synced = await self.tree.sync()
+            print(f"✨ Synced {len(synced)} command(s)")
+        except Exception as e:
+            print(f"❌ Error syncing commands: {e}")
         start_scheduled_tasks(self)
 
 def main():
     print("🤖 Starting News Bot...")
-    init_db()
+    try:
+        init_db()
+        print("✅ Database initialized")
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+        sys.exit(1)
+        
     threading.Thread(target=run_web, daemon=True).start()
     if not DISCORD_TOKEN:
         print("❌ DISCORD_TOKEN is missing! Please check your .env file.", file=sys.stderr)
