@@ -17,6 +17,11 @@ def run_web():
     @app.route("/")
     def index():
         return "Bot is running!", 200
+        
+    @app.route("/health")
+    def health():
+        return "OK", 200
+        
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
