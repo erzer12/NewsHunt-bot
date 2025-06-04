@@ -17,6 +17,10 @@ from summarizer import summarize_article
 from views import NewsPaginator, HelpMenuView
 from utils import create_news_embed, get_country_choices, get_category_choices, require_registration
 from onboard import ONBOARD_MSG
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def setup_commands(bot: commands.Bot):
     tree = bot.tree
@@ -204,20 +208,20 @@ async def setup_commands(bot: commands.Bot):
             await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
             # General help menu
-            embed = discord.Embed(
-                title="📰 NewsBot Help",
-                color=discord.Color.blue(),
-                description=(
-                    "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
-                    "**Local:** `/localnews`\n"
-                    "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
-                    "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
+        embed = discord.Embed(
+            title="📰 NewsBot Help",
+            color=discord.Color.blue(),
+            description=(
+                "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
+                "**Local:** `/localnews`\n"
+                "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
+                "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
                     "**Help:** `/help`\n\n"
                     "Use `/help <command>` to get detailed help for a specific command.\n"
                     "Example: `/help setcountry`"
                 )
-            )
-            await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
+        )
+        await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
 
     @tree.command(name="news", description="Get today's top headlines")
     @require_registration()
@@ -293,18 +297,28 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def search(interaction: discord.Interaction, query: str, count: int = 5):
         await interaction.response.defer()
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        articles = fetch_news_by_query(query, count)
-        if articles:
+        try:
+            articles = fetch_news_by_query(query, count)
+            if not articles:
+                await interaction.followup.send("No articles found for your search query.", ephemeral=True)
+                return
+
+            # Get user's preferred language
+            language = get_user_languages(interaction.user.id)[0]
+            
+            # Translate descriptions asynchronously
             for art in articles:
-                art["title"] = translate_text(art["title"], language)
-                art["description"] = translate_text(art.get("description", ""), language)
+                if "description" in art:
+                    art["description"] = await translate_text(art.get("description", ""), language)
+                if "title" in art:
+                    art["title"] = await translate_text(art.get("title", ""), language)
+
+            # Create and send the paginated view
             view = NewsPaginator(articles, interaction.user.id)
-            embed = create_news_embed(articles[0], f"Search Results: {query}")
-            await interaction.followup.send(embed=embed, view=view)
-        else:
-            await interaction.followup.send("❌ No results found.")
+            await interaction.followup.send(embed=view.get_current_embed(), view=view)
+        except Exception as e:
+            print(f"Error in search command: {e}")
+            await interaction.followup.send("An error occurred while searching for news.", ephemeral=True)
 
     @tree.command(name="summarize", description="Summarize a news article (auto-translated)")
     @require_registration()
@@ -370,7 +384,7 @@ async def setup_commands(bot: commands.Bot):
                 )
         
         # Add summary
-        translated_summary = translate_text(result["summary"], language)
+        translated_summary = await translate_text(result["summary"], language)
         embed.add_field(
             name=f"Summary ({length})",
             value=translated_summary,
@@ -390,18 +404,47 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def localnews(interaction: discord.Interaction, place: str):
         await interaction.response.defer()
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        articles = fetch_rss_news(place)
-        if articles:
-            for art in articles:
-                art["title"] = translate_text(art["title"], language)
-                art["summary"] = translate_text(art.get("summary", ""), language)
-            view = NewsPaginator(articles, interaction.user.id, is_rss=True)
-            embed = create_news_embed(articles[0], f"Local News: {place}", is_rss=True)
-            await interaction.followup.send(embed=embed, view=view)
-        else:
-            await interaction.followup.send(f"❌ No local news found for '{place}'.")
+        
+        try:
+            # Get user preferences
+            country = get_user_country(interaction.user.id)
+            langs = get_user_languages(interaction.user.id)
+            language = langs[0] if langs else "en"
+            
+            # Fetch news with user preferences
+            articles = await fetch_rss_news(
+                place=place,
+                max_articles=5,
+                language=language,
+                country=country
+            )
+            
+            if articles:
+                # Translate articles if needed
+                for art in articles:
+                    art["title"] = await translate_text(art["title"], language)
+                    art["summary"] = await translate_text(art.get("summary", ""), language)
+                
+                # Create and send paginated view
+                view = NewsPaginator(articles, interaction.user.id, is_rss=True)
+                embed = create_news_embed(articles[0], f"Local News: {place}", is_rss=True)
+                await interaction.followup.send(embed=embed, view=view)
+            else:
+                await interaction.followup.send(
+                    f"❌ No local news found for '{place}'. Try a different location or check your spelling.",
+                    ephemeral=True
+                )
+        except asyncio.TimeoutError:
+            await interaction.followup.send(
+                "⏰ The request timed out. Please try again in a few moments.",
+                ephemeral=True
+            )
+        except Exception as e:
+            logger.error(f"Error in localnews command: {str(e)}")
+            await interaction.followup.send(
+                "❌ An error occurred while fetching news. Please try again later.",
+                ephemeral=True
+            )
 
     @tree.command(name="bookmark", description="Bookmark an article")
     @require_registration()
@@ -654,8 +697,8 @@ def start_scheduled_tasks(bot):
                 if articles and user:
                     for article in articles:
                         # Translate title and description
-                        article["title"] = translate_text(article["title"], language)
-                        article["description"] = translate_text(article.get("description", ""), language)
+                        article["title"] = await translate_text(article["title"], language)
+                        article["description"] = await translate_text(article.get("description", ""), language)
                         
                         # Create embed with daily news format
                         embed = create_news_embed(article, is_daily=True)
