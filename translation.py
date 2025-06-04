@@ -1,23 +1,27 @@
+import os
 from googletrans import Translator
-import time
+import asyncio
+from functools import partial
 
 translator = Translator()
 
-def translate_text(text, dest_lang):
-    if not text or not dest_lang:
-        return text
+async def translate_text(text, dest_lang="en", timeout=5):
+    if not text:
+        return ""
     try:
-        # Add retry logic for stability
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                result = translator.translate(text, dest=dest_lang)
-                return result.text
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    print(f"Translation failed after {max_retries} attempts: {e}")
-                    return text
-                time.sleep(1)  # Wait before retrying
+        # Run translation in a thread pool with timeout
+        loop = asyncio.get_running_loop()
+        result = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(translator.translate, text, dest=dest_lang)
+            ),
+            timeout=timeout
+        )
+        return result.text
+    except asyncio.TimeoutError:
+        print(f"Translation timeout for text: {text[:50]}...")
+        return text  # Return original text if translation times out
     except Exception as e:
-        print(f"Translation error: {e}")
-        return text
+        print(f"Translation error: {str(e)}")
+        return text  # Return original text if translation fails
