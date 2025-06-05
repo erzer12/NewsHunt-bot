@@ -208,20 +208,20 @@ async def setup_commands(bot: commands.Bot):
             await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
             # General help menu
-        embed = discord.Embed(
-            title="📰 NewsBot Help",
-            color=discord.Color.blue(),
-            description=(
-                "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
-                "**Local:** `/localnews`\n"
-                "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
-                "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
+            embed = discord.Embed(
+                title="📰 NewsBot Help",
+                color=discord.Color.blue(),
+                description=(
+                    "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
+                    "**Local:** `/localnews`\n"
+                    "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
+                    "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
                     "**Help:** `/help`\n\n"
                     "Use `/help <command>` to get detailed help for a specific command.\n"
                     "Example: `/help setcountry`"
                 )
-        )
-        await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
+            )
+            await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
 
     @tree.command(name="news", description="Get today's top headlines")
     @require_registration()
