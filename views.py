@@ -5,8 +5,8 @@ from database import add_bookmark
 from translation import translate_text
 from utils import (
     create_error_embed, create_success_embed, create_info_embed,
-    create_warning_embed, create_pagination_embed, create_progress_embed,
-    create_confirmation_embed
+    create_progress_embed,
+    create_confirmation_embed, create_news_embed
 )
 
 class NewsPaginator(View):

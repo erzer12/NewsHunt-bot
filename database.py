@@ -12,14 +12,27 @@ if not MONGO_URI:
     print("❌ MONGODB_URI not found in environment variables!", file=sys.stderr)
     sys.exit(1)
 
+# Try strict TLS first, then fallback to allow invalid certs
 try:
-    client = MongoClient(MONGO_URI)
-    # Test the connection
+    print("🔗 Trying MongoDB connection with strict TLS...")
+    client = MongoClient(MONGO_URI, tls=True)
     client.admin.command('ping')
-    print("✅ Successfully connected to MongoDB!")
-except Exception as e:
-    print(f"❌ Failed to connect to MongoDB: {e}", file=sys.stderr)
-    sys.exit(1)
+    print("✅ Successfully connected to MongoDB with strict TLS!")
+except Exception as e1:
+    print(f"⚠️ Strict TLS failed: {e1}")
+    print("🔗 Retrying with tlsAllowInvalidCertificates=True...")
+    try:
+        client = MongoClient(MONGO_URI, tls=True, tlsAllowInvalidCertificates=True)
+        client.admin.command('ping')
+        print("✅ Successfully connected to MongoDB with fallback TLS!")
+    except Exception as e2:
+        print(f"❌ Failed to connect to MongoDB: {e2}", file=sys.stderr)
+        print("Please check:")
+        print("- Your Python version (should be 3.7+)")
+        print("- Your OpenSSL version (should support TLS 1.2)")
+        print("- Your Atlas IP whitelist and network access settings")
+        print("- That your connection string is correct and uses mongodb+srv://")
+        sys.exit(1)
 
 db = client[MONGO_DB]
 

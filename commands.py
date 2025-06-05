@@ -404,47 +404,25 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def localnews(interaction: discord.Interaction, place: str):
         await interaction.response.defer()
-        
         try:
-            # Get user preferences
             country = get_user_country(interaction.user.id)
             langs = get_user_languages(interaction.user.id)
             language = langs[0] if langs else "en"
-            
-            # Fetch news with user preferences
-            articles = await fetch_rss_news(
-                place=place,
-                max_articles=5,
-                language=language,
-                country=country
-            )
-            
+            articles = await fetch_rss_news(place=place, max_articles=5, language=language, country=country)
             if articles:
-                # Translate articles if needed
                 for art in articles:
                     art["title"] = await translate_text(art["title"], language)
                     art["summary"] = await translate_text(art.get("summary", ""), language)
-                
-                # Create and send paginated view
                 view = NewsPaginator(articles, interaction.user.id, is_rss=True)
                 embed = create_news_embed(articles[0], f"Local News: {place}", is_rss=True)
                 await interaction.followup.send(embed=embed, view=view)
             else:
-                await interaction.followup.send(
-                    f"❌ No local news found for '{place}'. Try a different location or check your spelling.",
-                    ephemeral=True
-                )
+                await interaction.followup.send(f"❌ No local news found for '{place}'. Try a different location or check your spelling.", ephemeral=True)
         except asyncio.TimeoutError:
-            await interaction.followup.send(
-                "⏰ The request timed out. Please try again in a few moments.",
-                ephemeral=True
-            )
+            await interaction.followup.send("⏰ The request timed out. Please try again in a few moments.", ephemeral=True)
         except Exception as e:
             logger.error(f"Error in localnews command: {str(e)}")
-            await interaction.followup.send(
-                "❌ An error occurred while fetching news. Please try again later.",
-                ephemeral=True
-            )
+            await interaction.followup.send("❌ An error occurred while fetching news. Please try again later.", ephemeral=True)
 
     @tree.command(name="bookmark", description="Bookmark an article")
     @require_registration()
