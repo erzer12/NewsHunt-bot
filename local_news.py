@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 import time
 from functools import lru_cache
 import asyncio
+import urllib.request
+import ssl
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -106,4 +108,25 @@ async def fetch_rss_news(place: str, max_articles: int = 5, language: str = "en"
         return []
     except Exception as e:
         logger.error(f"Error fetching news for {place}: {str(e)}")
+        return []
+
+def fetch_bangalore_news():
+    try:
+        # Create an unverified SSL context
+        context = ssl._create_unverified_context()
+        
+        # Fetch the feed with a timeout
+        with urllib.request.urlopen('https://bangaloremirror.indiatimes.com/rss.cms', timeout=10, context=context) as response:
+            feed_data = response.read()
+        
+        # Parse the feed
+        feed = feedparser.parse(feed_data)
+        
+        if not feed.entries:
+            logging.warning("No entries found in Bangalore news feed")
+            return []
+            
+        return feed.entries
+    except Exception as e:
+        logging.error(f"Error fetching news for bangalore: {e}")
         return []

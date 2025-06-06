@@ -6,6 +6,8 @@ from datetime import datetime
 import re
 import json
 from typing import Optional, List, Dict, Union
+import asyncio
+import logging
 
 def require_registration():
     async def predicate(interaction: Interaction) -> bool:
@@ -72,60 +74,35 @@ def extract_metadata(article: Dict) -> Dict:
     }
     return metadata
 
-def create_news_embed(article: Dict, title_prefix: str = "", is_rss: bool = False, 
-                     is_daily: bool = False, style: str = "default") -> discord.Embed:
-    """Create a news embed with the specified style"""
-    metadata = extract_metadata(article)
-    
-    # Create embed based on style
-    if style == "compact":
-        embed = discord.Embed(
-            title=f"{title_prefix} {metadata['title']}".strip(),
-            url=metadata['url'],
-            description=truncate_text(metadata['description']),
-            color=discord.Color.blue()
-        )
-        if metadata['image']:
-            embed.set_thumbnail(url=metadata['image'])
-        embed.set_footer(text=f"{metadata['source']} • {metadata['published']}")
+async def create_news_embed(article, title_prefix):
+    try:
+        metadata = article
+        description = metadata.get('description', '')
+        if asyncio.iscoroutine(description):
+            description = await description
+        description = truncate_text(description)
         
-    elif style == "detailed":
         embed = discord.Embed(
-            title=f"{title_prefix} {metadata['title']}".strip(),
-            url=metadata['url'],
-            description=truncate_text(metadata['description']),
+            title=f"{title_prefix} {metadata.get('title', 'No Title')}",
+            description=description,
             color=discord.Color.blue()
         )
-        if metadata['image']:
+        
+        if metadata.get('url'):
+            embed.url = metadata['url']
+        if metadata.get('image'):
             embed.set_image(url=metadata['image'])
-        
-        # Add metadata fields
-        embed.add_field(name="Source", value=metadata['source'], inline=True)
-        embed.add_field(name="Published", value=metadata['published'], inline=True)
-        if metadata['author']:
-            embed.add_field(name="Author", value=metadata['author'], inline=True)
-        if metadata['category']:
-            embed.add_field(name="Category", value=metadata['category'], inline=True)
-        if metadata['keywords']:
-            embed.add_field(
-                name="Keywords",
-                value=", ".join(metadata['keywords']),
-                inline=False
-            )
+        if metadata.get('source'):
+            embed.set_footer(text=f"Source: {metadata['source']}")
             
-    else:  # default style
-        embed = discord.Embed(
-            title=f"{title_prefix} {metadata['title']}".strip(),
-            url=metadata['url'],
-            description=truncate_text(metadata['description']),
-            color=discord.Color.blue()
+        return embed
+    except Exception as e:
+        logging.error(f"Error creating news embed: {e}")
+        return discord.Embed(
+            title="Error",
+            description="Failed to create news embed",
+            color=discord.Color.red()
         )
-        if metadata['image']:
-            embed.set_image(url=metadata['image'])
-        embed.add_field(name="Source", value=metadata['source'])
-        embed.set_footer(text=f"Published: {metadata['published']}")
-    
-    return embed
 
 async def get_country_choices(interaction: discord.Interaction, current: str) -> List[discord.app_commands.Choice]:
     """Get country choices for autocomplete"""
