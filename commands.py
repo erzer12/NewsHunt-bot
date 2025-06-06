@@ -9,7 +9,7 @@ from database import (
     get_all_categories, is_registered, register_user
 )
 from news_api import (
-    fetch_top_headlines, fetch_news_by_category, fetch_news_by_query, fetch_trending_news
+    fetch_top_headlines, fetch_news_by_category, fetch_news_by_query, fetch_trending_news, clear_cache
 )
 from local_news import fetch_rss_news
 from translation import translate_text
@@ -24,6 +24,11 @@ logger = logging.getLogger(__name__)
 
 async def setup_commands(bot: commands.Bot):
     tree = bot.tree
+
+    @tasks.loop(minutes=15)
+    async def clear_news_cache():
+        """Clear expired news cache every 15 minutes"""
+        clear_cache()
 
     @tree.command(name="start", description="Register to use NewsBot and get started")
     async def start(interaction: discord.Interaction):
@@ -230,16 +235,21 @@ async def setup_commands(bot: commands.Bot):
         country = get_user_country(interaction.user.id) or "us"
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
-        articles = fetch_top_headlines(country, count)
-        if articles:
-            for art in articles:
-                art["title"] = translate_text(art["title"], language)
-                art["description"] = translate_text(art.get("description", ""), language)
-            view = NewsPaginator(articles, interaction.user.id)
-            embed = create_news_embed(articles[0], f"Article 1/{len(articles)}")
-            await interaction.followup.send(embed=embed, view=view)
-        else:
-            await interaction.followup.send("❌ No news found.")
+        
+        try:
+            articles = fetch_top_headlines(country, count)
+            if articles:
+                for art in articles:
+                    art["title"] = translate_text(art["title"], language)
+                    art["description"] = translate_text(art.get("description", ""), language)
+                view = NewsPaginator(articles, interaction.user.id)
+                embed = create_news_embed(articles[0], f"Article 1/{len(articles)}")
+                await interaction.followup.send(embed=embed, view=view)
+            else:
+                await interaction.followup.send("❌ No news found.")
+        except Exception as e:
+            logger.error(f"Error in news command: {e}")
+            await interaction.followup.send("❌ An error occurred while fetching news.")
 
     @tree.command(name="category", description="Get news by category")
     @app_commands.autocomplete(category=get_category_choices)
@@ -248,16 +258,21 @@ async def setup_commands(bot: commands.Bot):
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
-        articles = fetch_news_by_category(category, count)
-        if articles:
-            for art in articles:
-                art["title"] = translate_text(art["title"], language)
-                art["description"] = translate_text(art.get("description", ""), language)
-            view = NewsPaginator(articles, interaction.user.id)
-            embed = create_news_embed(articles[0], f"Category: {category}")
-            await interaction.followup.send(embed=embed, view=view)
-        else:
-            await interaction.followup.send("❌ No news found in this category.")
+        
+        try:
+            articles = fetch_news_by_category(category, count)
+            if articles:
+                for art in articles:
+                    art["title"] = translate_text(art["title"], language)
+                    art["description"] = translate_text(art.get("description", ""), language)
+                view = NewsPaginator(articles, interaction.user.id)
+                embed = create_news_embed(articles[0], f"Category: {category}")
+                await interaction.followup.send(embed=embed, view=view)
+            else:
+                await interaction.followup.send("❌ No news found in this category.")
+        except Exception as e:
+            logger.error(f"Error in category command: {e}")
+            await interaction.followup.send("❌ An error occurred while fetching category news.")
 
     @tree.command(name="trending", description="Get trending news")
     @require_registration()
@@ -265,16 +280,21 @@ async def setup_commands(bot: commands.Bot):
         await interaction.response.defer()
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
-        articles = fetch_trending_news(count)
-        if articles:
-            for art in articles:
-                art["title"] = translate_text(art["title"], language)
-                art["description"] = translate_text(art.get("description", ""), language)
-            view = NewsPaginator(articles, interaction.user.id)
-            embed = create_news_embed(articles[0], f"Trending News")
-            await interaction.followup.send(embed=embed, view=view)
-        else:
-            await interaction.followup.send("❌ No trending news found.")
+        
+        try:
+            articles = fetch_trending_news(count)
+            if articles:
+                for art in articles:
+                    art["title"] = translate_text(art["title"], language)
+                    art["description"] = translate_text(art.get("description", ""), language)
+                view = NewsPaginator(articles, interaction.user.id)
+                embed = create_news_embed(articles[0], f"Trending News")
+                await interaction.followup.send(embed=embed, view=view)
+            else:
+                await interaction.followup.send("❌ No trending news found.")
+        except Exception as e:
+            logger.error(f"Error in trending command: {e}")
+            await interaction.followup.send("❌ An error occurred while fetching trending news.")
 
     @tree.command(name="flashnews", description="Get breaking news")
     @require_registration()
@@ -283,15 +303,20 @@ async def setup_commands(bot: commands.Bot):
         country = get_user_country(interaction.user.id) or "us"
         langs = get_user_languages(interaction.user.id)
         language = langs[0]
-        articles = fetch_top_headlines(country, 5, breaking=True)
-        if articles:
-            for art in articles:
-                art["title"] = translate_text(art["title"], language)
-                art["description"] = translate_text(art.get("description", ""), language)
-            embed = create_news_embed(articles[0], "🚨 BREAKING NEWS")
-            await interaction.followup.send(embed=embed)
-        else:
-            await interaction.followup.send("❌ No breaking news available.")
+        
+        try:
+            articles = fetch_top_headlines(country, 5, breaking=True)
+            if articles:
+                for art in articles:
+                    art["title"] = translate_text(art["title"], language)
+                    art["description"] = translate_text(art.get("description", ""), language)
+                embed = create_news_embed(articles[0], "🚨 BREAKING NEWS")
+                await interaction.followup.send(embed=embed)
+            else:
+                await interaction.followup.send("❌ No breaking news available.")
+        except Exception as e:
+            logger.error(f"Error in flashnews command: {e}")
+            await interaction.followup.send("❌ An error occurred while fetching breaking news.")
 
     @tree.command(name="search", description="Search news by keyword")
     @require_registration()

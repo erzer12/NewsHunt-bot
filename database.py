@@ -3,6 +3,8 @@ from pymongo import MongoClient, ASCENDING
 from dotenv import load_dotenv
 import sys
 import logging
+from typing import Dict, Optional
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -150,3 +152,47 @@ def remove_user_from_daily_news(user_id):
 
 def get_daily_news_users():
     return [u["user_id"] for u in db.daily_news_users.find({})]
+
+def cache_news_article(url: str, article_data: Dict):
+    """Cache a news article in the database"""
+    try:
+        db = get_db()
+        db.news_cache.update_one(
+            {"url": url},
+            {
+                "$set": {
+                    "data": article_data,
+                    "timestamp": datetime.utcnow()
+                }
+            },
+            upsert=True
+        )
+    except Exception as e:
+        logger.error(f"Error caching news article: {e}")
+
+def get_cached_article(url: str) -> Optional[Dict]:
+    """Get a cached news article from the database"""
+    try:
+        db = get_db()
+        cached = db.news_cache.find_one({"url": url})
+        if cached:
+            # Check if cache is still valid (1 hour)
+            if datetime.utcnow() - cached["timestamp"] < timedelta(hours=1):
+                return cached["data"]
+            else:
+                # Remove expired cache
+                db.news_cache.delete_one({"url": url})
+        return None
+    except Exception as e:
+        logger.error(f"Error getting cached article: {e}")
+        return None
+
+def clear_expired_cache():
+    """Clear expired cache entries"""
+    try:
+        db = get_db()
+        db.news_cache.delete_many({
+            "timestamp": {"$lt": datetime.utcnow() - timedelta(hours=1)}
+        })
+    except Exception as e:
+        logger.error(f"Error clearing expired cache: {e}")
