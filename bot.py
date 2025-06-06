@@ -3,9 +3,9 @@ import threading
 import time
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, request, jsonify
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import sys
 import logging
 
@@ -22,28 +22,52 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 # Track last health check log time
 last_health_log = datetime.now()
 
+# Rate limiting for health checks
+last_health_check = {}
+HEALTH_CHECK_INTERVAL = 5  # seconds
+
+# Initialize Flask app
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "Bot is running!", 200
+
+@app.route("/health")
+def health():
+    """Health check endpoint with rate limiting"""
+    current_time = time.time()
+    client_ip = request.remote_addr
+    
+    # Check if this IP has made a request recently
+    if client_ip in last_health_check:
+        last_check = last_health_check[client_ip]
+        if current_time - last_check < HEALTH_CHECK_INTERVAL:
+            return jsonify({"status": "ok", "message": "Rate limited"}), 429
+    
+    # Update last check time
+    last_health_check[client_ip] = current_time
+    
+    # Clean up old entries
+    current_time = time.time()
+    last_health_check.clear()
+    
+    return jsonify({
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "uptime": get_uptime()
+    })
+
+def get_uptime():
+    """Get bot uptime"""
+    if not hasattr(get_uptime, 'start_time'):
+        get_uptime.start_time = datetime.utcnow()
+    uptime = datetime.utcnow() - get_uptime.start_time
+    return str(uptime)
+
 def run_web():
-    app = Flask(__name__)
-
-    @app.route("/")
-    def index():
-        return "Bot is running!", 200
-
-    @app.route("/health")
-    def health():
-        global last_health_log
-        current_time = datetime.now()
-        
-        # Only log if 10 minutes have passed since last log
-        if current_time - last_health_log >= timedelta(minutes=10):
-            logger.info("Health check: OK")
-            last_health_log = current_time
-            
-        return "OK", 200
-
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, threaded=True)
-
 
 class NewsBot(commands.Bot):
     def __init__(self):
@@ -67,7 +91,6 @@ class NewsBot(commands.Bot):
             print(f"❌ Error syncing commands: {e}")
         start_scheduled_tasks(self)
 
-
 def main():
     print("🤖 Starting News Bot...")
     try:
@@ -77,7 +100,10 @@ def main():
         print(f"❌ Database initialization error: {e}")
         sys.exit(1)
 
-    threading.Thread(target=run_web, daemon=True).start()
+    # Start Flask server in a separate thread
+    web_thread = threading.Thread(target=run_web, daemon=True)
+    web_thread.start()
+    
     if not DISCORD_TOKEN:
         print(
             "❌ DISCORD_TOKEN is missing! Please check your .env file.",
@@ -86,7 +112,6 @@ def main():
         sys.exit(1)
     bot = NewsBot()
     bot.run(DISCORD_TOKEN)
-
 
 if __name__ == "__main__":
     main()
