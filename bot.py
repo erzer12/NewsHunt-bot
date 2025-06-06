@@ -1,17 +1,26 @@
 import os
 import threading
+import time
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from flask import Flask
 import discord
 from discord.ext import commands
 import sys
+import logging
 
 from database import init_db
 from commands import setup_commands, start_scheduled_tasks
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
+# Track last health check log time
+last_health_log = datetime.now()
 
 def run_web():
     app = Flask(__name__)
@@ -22,6 +31,14 @@ def run_web():
 
     @app.route("/health")
     def health():
+        global last_health_log
+        current_time = datetime.now()
+        
+        # Only log if 10 minutes have passed since last log
+        if current_time - last_health_log >= timedelta(minutes=10):
+            logger.info("Health check: OK")
+            last_health_log = current_time
+            
         return "OK", 200
 
     port = int(os.environ.get("PORT", 10000))
