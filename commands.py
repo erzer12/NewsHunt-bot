@@ -1,3 +1,4 @@
+import logging
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -18,8 +19,9 @@ from views import NewsPaginator, HelpMenuView
 from utils import create_news_embed, get_country_choices, get_category_choices, require_registration
 from onboard import ONBOARD_MSG
 import asyncio
-import logging
+import traceback
 
+# Configure logger
 logger = logging.getLogger(__name__)
 
 async def setup_commands(bot: commands.Bot):
@@ -231,12 +233,12 @@ async def setup_commands(bot: commands.Bot):
     @tree.command(name="news", description="Get today's top headlines")
     @require_registration()
     async def news(interaction: discord.Interaction, count: int = 5):
-        await interaction.response.defer()
-        country = get_user_country(interaction.user.id) or "us"
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        
         try:
+            await interaction.response.defer(ephemeral=False)
+            country = get_user_country(interaction.user.id) or "us"
+            langs = get_user_languages(interaction.user.id)
+            language = langs[0]
+            
             articles = fetch_top_headlines(country, count)
             if articles:
                 for art in articles:
@@ -247,19 +249,24 @@ async def setup_commands(bot: commands.Bot):
                 await interaction.followup.send(embed=embed, view=view)
             else:
                 await interaction.followup.send("❌ No news found.")
+        except discord.errors.NotFound:
+            logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
-            logger.error(f"Error in news command: {e}")
-            await interaction.followup.send("❌ An error occurred while fetching news.")
+            logger.error(f"Error in news command: {str(e)}\n{traceback.format_exc()}")
+            try:
+                await interaction.followup.send("❌ An error occurred while fetching news.")
+            except:
+                pass
 
     @tree.command(name="category", description="Get news by category")
     @app_commands.autocomplete(category=get_category_choices)
     @require_registration()
     async def category(interaction: discord.Interaction, category: str, count: int = 5):
-        await interaction.response.defer()
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        
         try:
+            await interaction.response.defer(ephemeral=False)
+            langs = get_user_languages(interaction.user.id)
+            language = langs[0]
+            
             articles = fetch_news_by_category(category, count)
             if articles:
                 for art in articles:
@@ -270,18 +277,23 @@ async def setup_commands(bot: commands.Bot):
                 await interaction.followup.send(embed=embed, view=view)
             else:
                 await interaction.followup.send("❌ No news found in this category.")
+        except discord.errors.NotFound:
+            logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
-            logger.error(f"Error in category command: {e}")
-            await interaction.followup.send("❌ An error occurred while fetching category news.")
+            logger.error(f"Error in category command: {str(e)}\n{traceback.format_exc()}")
+            try:
+                await interaction.followup.send("❌ An error occurred while fetching category news.")
+            except:
+                pass
 
     @tree.command(name="trending", description="Get trending news")
     @require_registration()
     async def trending(interaction: discord.Interaction, count: int = 5):
-        await interaction.response.defer()
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        
         try:
+            await interaction.response.defer(ephemeral=False)
+            langs = get_user_languages(interaction.user.id)
+            language = langs[0]
+            
             articles = fetch_trending_news(count)
             if articles:
                 for art in articles:
@@ -292,19 +304,24 @@ async def setup_commands(bot: commands.Bot):
                 await interaction.followup.send(embed=embed, view=view)
             else:
                 await interaction.followup.send("❌ No trending news found.")
+        except discord.errors.NotFound:
+            logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
-            logger.error(f"Error in trending command: {e}")
-            await interaction.followup.send("❌ An error occurred while fetching trending news.")
+            logger.error(f"Error in trending command: {str(e)}\n{traceback.format_exc()}")
+            try:
+                await interaction.followup.send("❌ An error occurred while fetching trending news.")
+            except:
+                pass
 
     @tree.command(name="flashnews", description="Get breaking news")
     @require_registration()
     async def flashnews(interaction: discord.Interaction):
-        await interaction.response.defer()
-        country = get_user_country(interaction.user.id) or "us"
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        
         try:
+            await interaction.response.defer(ephemeral=False)
+            country = get_user_country(interaction.user.id) or "us"
+            langs = get_user_languages(interaction.user.id)
+            language = langs[0]
+            
             articles = fetch_top_headlines(country, 5, breaking=True)
             if articles:
                 for art in articles:
@@ -314,15 +331,20 @@ async def setup_commands(bot: commands.Bot):
                 await interaction.followup.send(embed=embed)
             else:
                 await interaction.followup.send("❌ No breaking news available.")
+        except discord.errors.NotFound:
+            logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
-            logger.error(f"Error in flashnews command: {e}")
-            await interaction.followup.send("❌ An error occurred while fetching breaking news.")
+            logger.error(f"Error in flashnews command: {str(e)}\n{traceback.format_exc()}")
+            try:
+                await interaction.followup.send("❌ An error occurred while fetching breaking news.")
+            except:
+                pass
 
     @tree.command(name="search", description="Search news by keyword")
     @require_registration()
     async def search(interaction: discord.Interaction, query: str, count: int = 5):
-        await interaction.response.defer()
         try:
+            await interaction.response.defer()
             articles = fetch_news_by_query(query, count)
             if not articles:
                 await interaction.followup.send("No articles found for your search query.", ephemeral=True)
@@ -342,97 +364,102 @@ async def setup_commands(bot: commands.Bot):
             view = NewsPaginator(articles, interaction.user.id)
             await interaction.followup.send(embed=view.get_current_embed(), view=view)
         except Exception as e:
-            print(f"Error in search command: {e}")
+            logger.error(f"Error in search command: {str(e)}\n{traceback.format_exc()}")
             await interaction.followup.send("An error occurred while searching for news.", ephemeral=True)
 
     @tree.command(name="summarize", description="Summarize a news article (auto-translated)")
     @require_registration()
     async def summarize(interaction: discord.Interaction, url: str, length: str = "medium"):
-        await interaction.response.defer()
-        
-        # Validate length parameter
-        valid_lengths = ["short", "medium", "long"]
-        if length not in valid_lengths:
-            await interaction.followup.send(
-                "❌ Invalid length. Please choose from: short, medium, long",
-                ephemeral=True
+        try:
+            await interaction.response.defer()
+            
+            # Validate length parameter
+            valid_lengths = ["short", "medium", "long"]
+            if length not in valid_lengths:
+                await interaction.followup.send(
+                    "❌ Invalid length. Please choose from: short, medium, long",
+                    ephemeral=True
+                )
+                return
+            
+            # Get user's preferred language
+            langs = get_user_languages(interaction.user.id)
+            language = langs[0]
+            
+            # Get summary
+            result = summarize_article(url, length)
+            
+            if not result["success"]:
+                await interaction.followup.send(
+                    f"❌ {result['error']}",
+                    ephemeral=True
+                )
+                return
+            
+            # Create main summary embed
+            embed = discord.Embed(
+                title="📰 Article Summary",
+                color=discord.Color.blue(),
+                url=url
             )
-            return
-        
-        # Get user's preferred language
-        langs = get_user_languages(interaction.user.id)
-        language = langs[0]
-        
-        # Get summary
-        result = summarize_article(url, length)
-        
-        if not result["success"]:
-            await interaction.followup.send(
-                f"❌ {result['error']}",
-                ephemeral=True
+            
+            # Add metadata if available
+            if result["metadata"]:
+                meta = result["metadata"]
+                if meta["title"]:
+                    embed.add_field(
+                        name="Title",
+                        value=meta["title"],
+                        inline=False
+                    )
+                if meta["authors"]:
+                    embed.add_field(
+                        name="Authors",
+                        value=", ".join(meta["authors"]),
+                        inline=True
+                    )
+                if meta["publish_date"]:
+                    embed.add_field(
+                        name="Published",
+                        value=meta["publish_date"].strftime("%Y-%m-%d %H:%M"),
+                        inline=True
+                    )
+                if meta["keywords"]:
+                    embed.add_field(
+                        name="Keywords",
+                        value=", ".join(meta["keywords"][:5]),
+                        inline=False
+                    )
+            
+            # Add summary
+            translated_summary = await translate_text(result["summary"], language)
+            embed.add_field(
+                name=f"Summary ({length})",
+                value=translated_summary,
+                inline=False
             )
-            return
-        
-        # Create main summary embed
-        embed = discord.Embed(
-            title="📰 Article Summary",
-            color=discord.Color.blue(),
-            url=url
-        )
-        
-        # Add metadata if available
-        if result["metadata"]:
-            meta = result["metadata"]
-            if meta["title"]:
-                embed.add_field(
-                    name="Title",
-                    value=meta["title"],
-                    inline=False
-                )
-            if meta["authors"]:
-                embed.add_field(
-                    name="Authors",
-                    value=", ".join(meta["authors"]),
-                    inline=True
-                )
-            if meta["publish_date"]:
-                embed.add_field(
-                    name="Published",
-                    value=meta["publish_date"].strftime("%Y-%m-%d %H:%M"),
-                    inline=True
-                )
-            if meta["keywords"]:
-                embed.add_field(
-                    name="Keywords",
-                    value=", ".join(meta["keywords"][:5]),
-                    inline=False
-                )
-        
-        # Add summary
-        translated_summary = await translate_text(result["summary"], language)
-        embed.add_field(
-            name=f"Summary ({length})",
-            value=translated_summary,
-            inline=False
-        )
-        
-        # Add image if available
-        if result["metadata"] and result["metadata"]["top_image"]:
-            embed.set_image(url=result["metadata"]["top_image"])
-        
-        # Add footer with length info
-        embed.set_footer(text=f"Summary length: {length} | Translated to: {language}")
-        
-        await interaction.followup.send(embed=embed, ephemeral=True)
+            
+            # Add image if available
+            if result["metadata"] and result["metadata"]["top_image"]:
+                embed.set_image(url=result["metadata"]["top_image"])
+            
+            # Add footer with length info
+            embed.set_footer(text=f"Summary length: {length} | Translated to: {language}")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error in summarize command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.followup.send("An error occurred while summarizing the article.", ephemeral=True)
 
     @tree.command(name="localnews", description="Get the latest local news via RSS")
     @require_registration()
     async def localnews(interaction: discord.Interaction, place: str):
-        await interaction.response.defer()
         try:
+            await interaction.response.defer()
             country = get_user_country(interaction.user.id)
             langs = get_user_languages(interaction.user.id)
             language = langs[0] if langs else "en"
+            
             articles = await fetch_rss_news(place=place, max_articles=5, language=language, country=country)
             if articles:
                 for art in articles:
@@ -446,274 +473,104 @@ async def setup_commands(bot: commands.Bot):
         except asyncio.TimeoutError:
             await interaction.followup.send("⏰ The request timed out. Please try again in a few moments.", ephemeral=True)
         except Exception as e:
-            logger.error(f"Error in localnews command: {str(e)}")
+            logger.error(f"Error in localnews command: {str(e)}\n{traceback.format_exc()}")
             await interaction.followup.send("❌ An error occurred while fetching news. Please try again later.", ephemeral=True)
 
     @tree.command(name="bookmark", description="Bookmark an article")
     @require_registration()
     async def bookmark(interaction: discord.Interaction, url: str, title: str):
-        add_bookmark(interaction.user.id, url, title)
-        await interaction.response.send_message("✅ Article bookmarked!", ephemeral=True)
+        try:
+            add_bookmark(interaction.user.id, url, title)
+            await interaction.response.send_message("✅ Article bookmarked!", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error in bookmark command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.response.send_message("❌ An error occurred while bookmarking the article.", ephemeral=True)
 
     @tree.command(name="bookmarks", description="List your bookmarks")
     @require_registration()
     async def bookmarks(interaction: discord.Interaction):
-        marks = get_bookmarks(interaction.user.id)
-        if not marks:
-            await interaction.response.send_message("You have no bookmarks.", ephemeral=True)
-            return
-        embed = discord.Embed(
-            title="🔖 Your Bookmarks",
-            color=discord.Color.teal(),
-            description="\n\n".join(
-                f"{i+1}. [{title}]({url})"
-                for i, (url, title) in enumerate(marks)
+        try:
+            marks = get_bookmarks(interaction.user.id)
+            if not marks:
+                await interaction.response.send_message("You have no bookmarks.", ephemeral=True)
+                return
+            embed = discord.Embed(
+                title="🔖 Your Bookmarks",
+                color=discord.Color.teal(),
+                description="\n\n".join(
+                    f"{i+1}. [{title}]({url})"
+                    for i, (url, title) in enumerate(marks)
+                )
             )
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error in bookmarks command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.response.send_message("❌ An error occurred while fetching your bookmarks.", ephemeral=True)
 
     @tree.command(name="remove_bookmark", description="Remove a bookmark by index (starts at 1)")
     @require_registration()
     async def remove_bookmark_cmd(interaction: discord.Interaction, index: int):
-        marks = get_bookmarks(interaction.user.id)
-        if 0 < index <= len(marks):
-            removed = remove_bookmark(interaction.user.id, index-1)
-            await interaction.response.send_message("✅ Bookmark removed.", ephemeral=True)
-        else:
-            await interaction.response.send_message("❌ Invalid bookmark index.", ephemeral=True)
+        try:
+            marks = get_bookmarks(interaction.user.id)
+            if 0 < index <= len(marks):
+                removed = remove_bookmark(interaction.user.id, index-1)
+                await interaction.response.send_message("✅ Bookmark removed.", ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ Invalid bookmark index.", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error in remove_bookmark command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.response.send_message("❌ An error occurred while removing the bookmark.", ephemeral=True)
 
     @tree.command(name="setcountry", description="Set your preferred country")
     @app_commands.autocomplete(country=get_country_choices)
     @require_registration()
     async def setcountry(interaction: discord.Interaction, country: str):
-        set_user_country(interaction.user.id, country)
-        await interaction.response.send_message(f"✅ Country set to: {country}", ephemeral=True)
+        try:
+            set_user_country(interaction.user.id, country)
+            await interaction.response.send_message(f"✅ Country set to: {country}", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error in setcountry command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.response.send_message("❌ An error occurred while setting your country.", ephemeral=True)
 
     @tree.command(name="setlang", description="Set your preferred news language(s) (comma-separated codes)")
     @require_registration()
     async def setlang(interaction: discord.Interaction, languages: str):
-        langs = [l.strip() for l in languages.split(",") if l.strip()]
-        
-        # List of recommended languages with detailed accuracy info
-        recommended_langs = {
-            "en": {
-                "name": "English",
-                "accuracy": "Most accurate",
-                "best_for": "All content types",
-                "sample": "Breaking news: Major developments in technology sector"
-            },
-            "es": {
-                "name": "Spanish",
-                "accuracy": "Very accurate",
-                "best_for": "General news, politics, sports",
-                "sample": "Noticias de última hora: Grandes avances en el sector tecnológico"
-            },
-            "fr": {
-                "name": "French",
-                "accuracy": "Very accurate",
-                "best_for": "General news, culture, politics",
-                "sample": "Dernières nouvelles : Progrès majeurs dans le secteur technologique"
-            },
-            "de": {
-                "name": "German",
-                "accuracy": "Very accurate",
-                "best_for": "Technical news, business, science",
-                "sample": "Eilmeldung: Wichtige Entwicklungen im Technologiesektor"
-            },
-            "it": {
-                "name": "Italian",
-                "accuracy": "Very accurate",
-                "best_for": "General news, culture, sports",
-                "sample": "Ultime notizie: Grandi sviluppi nel settore tecnologico"
-            },
-            "pt": {
-                "name": "Portuguese",
-                "accuracy": "Very accurate",
-                "best_for": "General news, business, sports",
-                "sample": "Últimas notícias: Grandes avanços no setor tecnológico"
-            },
-            "ru": {
-                "name": "Russian",
-                "accuracy": "Good accuracy",
-                "best_for": "Politics, international news",
-                "sample": "Срочные новости: Крупные достижения в технологическом секторе"
-            },
-            "ja": {
-                "name": "Japanese",
-                "accuracy": "Good accuracy",
-                "best_for": "Technology, business news",
-                "sample": "速報：技術セクターでの大きな進展"
-            },
-            "ko": {
-                "name": "Korean",
-                "accuracy": "Good accuracy",
-                "best_for": "Technology, entertainment news",
-                "sample": "속보: 기술 부문의 주요 발전"
-            },
-            "zh": {
-                "name": "Chinese",
-                "accuracy": "Good accuracy",
-                "best_for": "Business, technology news",
-                "sample": "突发新闻：技术领域重大进展"
-            }
-        }
-        
-        # Check for non-recommended languages
-        non_recommended = [lang for lang in langs if lang not in recommended_langs]
-        
-        if non_recommended:
-            warning_embed = discord.Embed(
-                title="⚠️ Warning: Non-Recommended Languages",
-                color=discord.Color.yellow(),
-                description=(
-                    "The following languages are not in our recommended list and may have varying translation accuracy:\n"
-                    f"• {', '.join(non_recommended)}\n\n"
-                    "**Why We Recommend These Languages:**\n"
-                    "• Extensive testing with news content\n"
-                    "• High accuracy for technical terms\n"
-                    "• Reliable translation of idioms and expressions\n"
-                    "• Consistent quality across different news categories\n\n"
-                    "**Recommended Languages with Sample Translations:**\n"
-                )
-            )
-            
-            # Add fields for each recommended language
-            for code, info in recommended_langs.items():
-                warning_embed.add_field(
-                    name=f"{info['name']} ({code}) - {info['accuracy']}",
-                    value=f"Best for: {info['best_for']}\nSample: {info['sample']}",
-                    inline=False
-                )
-            
-            warning_embed.add_field(
-                name="Would you like to:",
-                value=(
-                    "1️⃣ **Test Translation** - See how your selected languages perform\n"
-                    "2️⃣ **Proceed Anyway** - Set these languages despite the warning\n"
-                    "3️⃣ **Cancel** - Choose different languages"
-                ),
-                inline=False
-            )
-            
-            # Create enhanced confirmation view
-            class LangConfirmView(discord.ui.View):
-                def __init__(self):
-                    super().__init__(timeout=300)  # 5 minutes timeout
-                
-                @discord.ui.button(label="Test Translation", style=discord.ButtonStyle.primary, emoji="1️⃣")
-                async def test(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                    if button_interaction.user.id != interaction.user.id:
-                        await button_interaction.response.send_message("This is not your confirmation.", ephemeral=True)
-                        return
-                    
-                    # Test translation
-                    test_text = "Breaking news: Major developments in technology sector. New AI models show promising results in medical research."
-                    test_embed = discord.Embed(
-                        title="🔍 Translation Test Results",
-                        color=discord.Color.blue(),
-                        description="Here's how your selected languages translate this sample news text:"
-                    )
-                    
-                    for lang in langs:
-                        try:
-                            translated = translate_text(test_text, lang)
-                            test_embed.add_field(
-                                name=f"{recommended_langs.get(lang, {}).get('name', lang)} ({lang})",
-                                value=translated,
-                                inline=False
-                            )
-                        except Exception as e:
-                            test_embed.add_field(
-                                name=f"{lang}",
-                                value=f"❌ Translation failed: {str(e)}",
-                                inline=False
-                            )
-                    
-                    test_embed.add_field(
-                        name="Would you like to proceed with these languages?",
-                        value="Use the buttons below to confirm or cancel.",
-                        inline=False
-                    )
-                    
-                    await button_interaction.response.edit_message(embed=test_embed, view=self)
-                
-                @discord.ui.button(label="Proceed", style=discord.ButtonStyle.green, emoji="2️⃣")
-                async def confirm(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                    if button_interaction.user.id != interaction.user.id:
-                        await button_interaction.response.send_message("This is not your confirmation.", ephemeral=True)
-                        return
-                    set_user_languages(interaction.user.id, langs)
-                    await button_interaction.response.edit_message(
-                        content=f"✅ Language(s) set to: {', '.join(langs)}",
-                        embed=None,
-                        view=None
-                    )
-                
-                @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="3️⃣")
-                async def cancel(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                    if button_interaction.user.id != interaction.user.id:
-                        await button_interaction.response.send_message("This is not your confirmation.", ephemeral=True)
-                        return
-                    await button_interaction.response.edit_message(
-                        content="❌ Language setting cancelled.",
-                        embed=None,
-                        view=None
-                    )
-            
-            await interaction.response.send_message(embed=warning_embed, view=LangConfirmView(), ephemeral=True)
-        else:
+        try:
+            langs = [l.strip() for l in languages.split(",") if l.strip()]
             set_user_languages(interaction.user.id, langs)
             await interaction.response.send_message(f"✅ Language(s) set to: {', '.join(langs)}", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error in setlang command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.response.send_message("❌ An error occurred while setting your languages.", ephemeral=True)
 
     @tree.command(name="dailynews", description="Toggle your daily news DM digest")
     @require_registration()
     async def dailynews(interaction: discord.Interaction, enabled: bool):
-        if enabled:
-            add_user_to_daily_news(interaction.user.id)
-            await interaction.response.send_message("✅ Daily news enabled! You'll get news in your DMs.", ephemeral=True)
-        else:
-            remove_user_from_daily_news(interaction.user.id)
-            await interaction.response.send_message("✅ Daily news disabled.", ephemeral=True)
+        try:
+            if enabled:
+                add_user_to_daily_news(interaction.user.id)
+                await interaction.response.send_message("✅ Daily news enabled! You'll get news in your DMs.", ephemeral=True)
+            else:
+                remove_user_from_daily_news(interaction.user.id)
+                await interaction.response.send_message("✅ Daily news disabled.", ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error in dailynews command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.response.send_message("❌ An error occurred while toggling daily news.", ephemeral=True)
 
     @tree.command(name="setchannel", description="Set channel for daily news (Admin only)")
     @app_commands.checks.has_permissions(administrator=True)
     @require_registration()
     async def setchannel(interaction: discord.Interaction, channel: discord.TextChannel):
-        set_guild_news_channel(interaction.guild_id, channel.id)
-        await interaction.response.send_message(f"✅ Daily news channel set to: {channel.mention}")
+        try:
+            set_guild_news_channel(interaction.guild_id, channel.id)
+            await interaction.response.send_message(f"✅ Daily news channel set to: {channel.mention}")
+        except Exception as e:
+            logger.error(f"Error in setchannel command: {str(e)}\n{traceback.format_exc()}")
+            await interaction.response.send_message("❌ An error occurred while setting the news channel.", ephemeral=True)
+
+    # Start the cache clearing task
+    clear_news_cache.start()
 
 def start_scheduled_tasks(bot):
-    @tasks.loop(hours=24)
-    async def send_daily_news():
-        users = get_daily_news_users()
-        for user_id in users:
-            try:
-                user = await bot.fetch_user(user_id)
-                if not user:
-                    continue
-                    
-                country = get_user_country(user_id)
-                langs = get_user_languages(user_id)
-                language = langs[0] if langs else "en"
-                
-                articles = fetch_top_headlines(country, 5)
-                if articles and user:
-                    for article in articles:
-                        # Translate title and description
-                        article["title"] = await translate_text(article["title"], language)
-                        article["description"] = await translate_text(article.get("description", ""), language)
-                        
-                        # Create embed with daily news format
-                        embed = create_news_embed(article, is_daily=True)
-                        
-                        try:
-                            await user.send(embed=embed)
-                        except discord.Forbidden:
-                            # User has DMs disabled
-                            remove_user_from_daily_news(user_id)
-                        except Exception as e:
-                            print(f"Error sending daily news to {user_id}: {e}")
-            except Exception as e:
-                print(f"Error processing daily news for user {user_id}: {e}")
-                
-    send_daily_news.start()
+    """Start all scheduled tasks"""
+    pass  # Tasks are started in setup_commands
