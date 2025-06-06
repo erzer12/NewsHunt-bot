@@ -55,27 +55,17 @@ def init_db():
         
         # Initialize default categories if none exist
         if db.categories.count_documents({}) == 0:
-            default_categories = {
-                'business': 'Business, finance, stocks, markets, cryptocurrencies, startups, and company news',
-                'entertainment': 'Movies, TV shows, music, celebrities, gaming, streaming, and arts',
-                'technology': 'AI, software, hardware, gadgets, cybersecurity, and tech company updates',
-                'sports': 'Football, basketball, cricket, tennis, F1, Olympics, and athlete updates',
-                'science': 'Space exploration, physics, biology, climate change, and research breakthroughs',
-                'health': 'Medical research, wellness, nutrition, fitness, mental health, and healthcare',
-                'politics': 'Government policies, elections, international relations, and political events',
-                'environment': 'Climate change, sustainability, renewable energy, and conservation',
-                'education': 'Learning trends, academic research, education tech, and student news',
-                'automotive': 'Cars, EVs, automotive industry, and future mobility',
-                'gaming': 'Video games, esports, gaming hardware, and industry updates',
-                'food': 'Culinary trends, restaurants, recipes, and food industry news',
-                'travel': 'Tourism, destinations, travel tips, and industry updates',
-                'fashion': 'Fashion trends, designers, industry news, and lifestyle',
-                'crypto': 'Cryptocurrency, blockchain, NFTs, and digital assets',
-                'general': 'Top headlines and breaking news from around the world'
-            }
-            for name, desc in default_categories.items():
+            default_categories = [
+                ("general", "General news and updates"),
+                ("technology", "Technology and innovation news"),
+                ("business", "Business and financial news"),
+                ("sports", "Sports news and updates"),
+                ("entertainment", "Entertainment and celebrity news")
+            ]
+            for name, desc in default_categories:
                 db.categories.insert_one({"name": name, "description": desc})
-        print("✅ Database initialized successfully!")
+        
+        logging.info("Database initialized successfully!")
         return db
     except Exception as e:
         logging.error(f"Failed to initialize database: {e}")
