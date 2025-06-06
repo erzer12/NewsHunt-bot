@@ -211,7 +211,6 @@ def fetch_trending_news(count: int = 5) -> List[Dict]:
         logger.error(f"Error fetching trending news: {e}")
         return []
 
-# Clear expired cache periodically
 def clear_cache():
     """Clear expired cache entries"""
     try:
