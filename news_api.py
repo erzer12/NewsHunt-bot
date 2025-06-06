@@ -6,9 +6,13 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import json
 from database import cache_news_article, get_cached_article, clear_expired_cache
+import traceback
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
@@ -100,7 +104,7 @@ def fetch_top_headlines(country: str = "us", count: int = 5, breaking: bool = Fa
             logger.error(f"NewsAPI error: {error_msg}")
             return []
     except Exception as e:
-        logger.error(f"Error fetching headlines: {e}")
+        logger.error(f"Error fetching headlines: {str(e)}\n{traceback.format_exc()}")
         return []
 
 def fetch_news_by_category(category: str, count: int = 5) -> List[Dict]:

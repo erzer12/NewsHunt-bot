@@ -194,7 +194,7 @@ class NewsPaginator(View):
                     await interaction.message.edit(embed=progress_embed)
                     
                     # Translate summary
-                    langs = art.get("language_codes") or ["en"]
+        langs = art.get("language_codes") or ["en"]
                     translated = translate_text(result["summary"], langs[0])
                     
                     # Create final embed
@@ -343,9 +343,9 @@ class NewsPaginator(View):
                 if button_interaction.user.id != self.user_id:
                     await button_interaction.response.send_message("Not your message.", ephemeral=True)
                     return
-                try:
-                    await interaction.message.delete()
-                except discord.HTTPException:
+        try:
+            await interaction.message.delete()
+        except discord.HTTPException:
                     await button_interaction.response.send_message(
                         "Message already deleted.",
                         ephemeral=True
