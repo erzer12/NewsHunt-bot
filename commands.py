@@ -13,7 +13,7 @@ from news_api import (
     fetch_top_headlines, fetch_news_by_category, fetch_news_by_query, fetch_trending_news, clear_cache
 )
 from local_news import fetch_rss_news
-from translation import translate_text
+from transalation import translate_text  # KEEP your original typo here
 from summarizer import summarize_article
 from views import NewsPaginator, HelpMenuView
 from utils import create_news_embed, get_country_choices, get_category_choices, require_registration
@@ -35,20 +35,49 @@ async def setup_commands(bot: commands.Bot):
     @tree.command(name="start", description="Register to use NewsBot and get started")
     async def start(interaction: discord.Interaction):
         if is_registered(interaction.user.id):
-            await interaction.response.send_message("You are already registered! Use `/help` to see available commands.", ephemeral=True)
+            # Handle 'Unknown interaction' error gracefully
+            try:
+                await interaction.response.send_message(
+                    "You are already registered! Use `/help` to see available commands.",
+                    ephemeral=True
+                )
+            except discord.errors.NotFound:
+                try:
+                    await interaction.edit_original_response(
+                        content="You are already registered! Use `/help` to see available commands."
+                    )
+                except Exception:
+                    await interaction.followup.send(
+                        "You are already registered! Use `/help` to see available commands.",
+                        ephemeral=True
+                    )
             return
         register_user(interaction.user.id)
         try:
             await interaction.user.send(ONBOARD_MSG)
         except Exception:
             pass  # DM might fail
-        await interaction.response.send_message("✅ You are registered! Check your DMs for a quick setup guide.", ephemeral=True)
+        try:
+            await interaction.response.send_message(
+                "✅ You are registered! Check your DMs for a quick setup guide.",
+                ephemeral=True
+            )
+        except discord.errors.NotFound:
+            try:
+                await interaction.edit_original_response(
+                    content="✅ You are registered! Check your DMs for a quick setup guide."
+                )
+            except Exception:
+                await interaction.followup.send(
+                    "✅ You are registered! Check your DMs for a quick setup guide.",
+                    ephemeral=True
+                )
 
     @tree.command(name="help", description="Show all available commands or get help for a specific command")
     @require_registration()
     async def help_command(interaction: discord.Interaction, command: str = None):
         if command:
-            # Command-specific help
+            # Command-specific help (no changes)
             command = command.lower()
             if command == "setcountry":
                 embed = discord.Embed(
@@ -230,7 +259,7 @@ async def setup_commands(bot: commands.Bot):
             )
             await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
 
-    # ...continue with your other commands, using the same indentation pattern...
+    # ...your other commands, unchanged...
 
     # Start the cache clearing task
     clear_news_cache.start()
