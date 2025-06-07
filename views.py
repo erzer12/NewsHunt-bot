@@ -17,14 +17,14 @@ class NewsPaginator(View):
         self.sort_by = "date"
         self.filter_category = None
 
-        # Navigation buttons
+        # Navigation buttons (all on row 0)
         self.prev_btn = Button(emoji="⬅️", style=discord.ButtonStyle.secondary, row=0)
         self.next_btn = Button(emoji="➡️", style=discord.ButtonStyle.secondary, row=0)
         self.jump_btn = Button(label="Jump to...", style=discord.ButtonStyle.secondary, row=0)
         self.first_btn = Button(emoji="⏮️", style=discord.ButtonStyle.secondary, row=0)
         self.last_btn = Button(emoji="⏭️", style=discord.ButtonStyle.secondary, row=0)
 
-        # Style selector
+        # Style selector (row 1)
         self.style_select = Select(
             placeholder="Display Style",
             options=[
@@ -32,10 +32,10 @@ class NewsPaginator(View):
                 discord.SelectOption(label="Compact", value="compact", description="Minimal view"),
                 discord.SelectOption(label="Detailed", value="detailed", description="Full metadata")
             ],
-            row=2
+            row=1
         )
 
-        # Sort selector
+        # Sort selector (row 2)
         self.sort_select = Select(
             placeholder="Sort By",
             options=[
@@ -55,7 +55,7 @@ class NewsPaginator(View):
         self.style_select.callback = self.change_style
         self.sort_select.callback = self.change_sort
 
-        # Add items
+        # Add items, split across rows
         self.add_item(self.first_btn)
         self.add_item(self.prev_btn)
         self.add_item(self.next_btn)
