@@ -38,20 +38,22 @@ def health():
     """Health check endpoint with rate limiting"""
     current_time = time.time()
     client_ip = request.remote_addr
-    
+
     # Check if this IP has made a request recently
     if client_ip in last_health_check:
         last_check = last_health_check[client_ip]
         if current_time - last_check < HEALTH_CHECK_INTERVAL:
             return jsonify({"status": "ok", "message": "Rate limited"}), 429
-    
+
     # Update last check time
     last_health_check[client_ip] = current_time
-    
-    # Clean up old entries
-    current_time = time.time()
-    last_health_check.clear()
-    
+
+    # Clean up old entries (remove those older than 1 minute)
+    cutoff = current_time - 60
+    for ip in list(last_health_check.keys()):
+        if last_health_check[ip] < cutoff:
+            del last_health_check[ip]
+
     return jsonify({
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
@@ -77,39 +79,36 @@ class NewsBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        print("🔄 Setting up commands...")
+        logger.info("🔄 Setting up commands...")
         await setup_commands(self)
-        print("✅ Commands setup complete")
+        logger.info("✅ Commands setup complete")
 
     async def on_ready(self):
         if self.user:
-            print(f"✅ Logged in as {self.user.name}")
-        print("🔄 Syncing commands...")
+            logger.info(f"✅ Logged in as {self.user.name}")
+        logger.info("🔄 Syncing commands...")
         try:
             synced = await self.tree.sync()
-            print(f"✨ Synced {len(synced)} command(s)")
+            logger.info(f"✨ Synced {len(synced)} command(s)")
         except Exception as e:
-            print(f"❌ Error syncing commands: {e}")
+            logger.error(f"❌ Error syncing commands: {e}")
         start_scheduled_tasks(self)
 
 def main():
-    print("🤖 Starting News Bot...")
+    logger.info("🤖 Starting News Bot...")
     try:
         init_db()
-        print("✅ Database initialized")
+        logger.info("✅ Database initialized")
     except Exception as e:
-        print(f"❌ Database initialization error: {e}")
+        logger.error(f"❌ Database initialization error: {e}")
         sys.exit(1)
 
     # Start Flask server in a separate thread
     web_thread = threading.Thread(target=run_web, daemon=True)
     web_thread.start()
-    
+
     if not DISCORD_TOKEN:
-        print(
-            "❌ DISCORD_TOKEN is missing! Please check your .env file.",
-            file=sys.stderr
-        )
+        logger.error("❌ DISCORD_TOKEN is missing! Please check your .env file.")
         sys.exit(1)
     bot = NewsBot()
     bot.run(DISCORD_TOKEN)
