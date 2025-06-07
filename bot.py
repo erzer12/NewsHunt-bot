@@ -12,8 +12,13 @@ import logging
 from database import init_db
 from commands import setup_commands, start_scheduled_tasks
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# --- Shorter logging configuration ---
+logging.basicConfig(
+    level=logging.WARNING,  # Only warnings and errors will show up
+    format='[%(levelname)s] %(name)s: %(message)s'
+)
+logging.getLogger('discord').setLevel(logging.WARNING)
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -95,10 +100,10 @@ class NewsBot(commands.Bot):
         start_scheduled_tasks(self)
 
 def main():
-    logger.info("🤖 Starting News Bot...")
+    logger.warning("🤖 Starting News Bot...")  # Use warning so it's visible in logs
     try:
         init_db()
-        logger.info("✅ Database initialized")
+        logger.warning("✅ Database initialized")
     except Exception as e:
         logger.error(f"❌ Database initialization error: {e}")
         sys.exit(1)
