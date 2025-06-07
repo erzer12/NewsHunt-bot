@@ -6,10 +6,8 @@ ONBOARD_MSG = (
     "• Set your language(s): `/setlang <lang_codes>`\n"
     "**Try these commands:**\n"
     "• `/news` — Top headlines\n"
-    "• `/localnews <place>` — Local news via RSS\n"
     "• `/category <category>` — Category news\n"
     "• `/search <keyword>` — Search for news\n"
-    "• `/bookmark <url> <title>` — Bookmark an article\n"
     "• `/dailynews <on|off>` — Daily news in DMs\n\n"
     "_Use `/help` any time to see all commands!_\n"
 )
