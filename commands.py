@@ -4,22 +4,15 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from database import (
     set_user_country, get_user_country, set_user_languages, get_user_languages,
-    add_bookmark, get_bookmarks, remove_bookmark,
-    add_user_to_daily_news, remove_user_from_daily_news, get_daily_news_users,
-    set_guild_news_channel, get_guild_news_channel,
-    get_all_categories, is_registered, register_user
+    get_all_categories, is_registered, register_user,
+    set_guild_news_channel, get_guild_news_channel
 )
 from news_api import (
     fetch_top_headlines, fetch_news_by_category, fetch_news_by_query, fetch_trending_news, clear_cache
 )
-from local_news import fetch_rss_news
-from transalation import translate_text  # KEEP your original typo here
-from summarizer import summarize_article
 from views import NewsPaginator, HelpMenuView
 from utils import create_news_embed, get_country_choices, get_category_choices, require_registration
 from onboard import ONBOARD_MSG
-import asyncio
-import traceback
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -35,7 +28,6 @@ async def setup_commands(bot: commands.Bot):
     @tree.command(name="start", description="Register to use NewsBot and get started")
     async def start(interaction: discord.Interaction):
         if is_registered(interaction.user.id):
-            # Handle 'Unknown interaction' error gracefully
             try:
                 await interaction.response.send_message(
                     "You are already registered! Use `/help` to see available commands.",
@@ -77,7 +69,6 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def help_command(interaction: discord.Interaction, command: str = None):
         if command:
-            # Command-specific help (no changes)
             command = command.lower()
             if command == "setcountry":
                 embed = discord.Embed(
@@ -100,24 +91,23 @@ async def setup_commands(bot: commands.Bot):
                     title="📰 Help: /setlang",
                     color=discord.Color.blue(),
                     description=(
-                        "Set your preferred language(s) for news translation.\n\n"
+                        "Set your preferred language(s) for news.\n\n"
                         "**Usage:** `/setlang <language_codes>`\n\n"
                         "**Reliable Language Codes:**\n"
-                        "• English (en) - Most accurate\n"
-                        "• Spanish (es) - Very accurate\n"
-                        "• French (fr) - Very accurate\n"
-                        "• German (de) - Very accurate\n"
-                        "• Italian (it) - Very accurate\n"
-                        "• Portuguese (pt) - Very accurate\n"
-                        "• Russian (ru) - Good accuracy\n"
-                        "• Japanese (ja) - Good accuracy\n"
-                        "• Korean (ko) - Good accuracy\n"
-                        "• Chinese (zh) - Good accuracy\n\n"
+                        "• English (en)\n"
+                        "• Spanish (es)\n"
+                        "• French (fr)\n"
+                        "• German (de)\n"
+                        "• Italian (it)\n"
+                        "• Portuguese (pt)\n"
+                        "• Russian (ru)\n"
+                        "• Japanese (ja)\n"
+                        "• Korean (ko)\n"
+                        "• Chinese (zh)\n\n"
                         "**Examples:**\n"
                         "• `/setlang en` - English only\n"
                         "• `/setlang es,fr` - Spanish and French\n"
-                        "• `/setlang ja,ko` - Japanese and Korean\n\n"
-                        "**Note:** These languages have been tested and provide reliable translations for news content. Other languages may have varying accuracy."
+                        "• `/setlang ja,ko` - Japanese and Korean"
                     )
                 )
             elif command == "news":
@@ -140,22 +130,22 @@ async def setup_commands(bot: commands.Bot):
                         "Get news by specific category.\n\n"
                         "**Usage:** `/category <category> [count]`\n\n"
                         "**Available Categories:**\n"
-                        "• business - Business and finance news\n"
-                        "• entertainment - Movies, TV, music, and arts\n"
-                        "• technology - Tech and innovation news\n"
-                        "• sports - Sports and athletics\n"
-                        "• science - Scientific discoveries\n"
-                        "• health - Health and medical news\n"
-                        "• politics - Political news\n"
-                        "• environment - Environmental news\n"
-                        "• education - Education news\n"
-                        "• automotive - Auto industry news\n"
-                        "• gaming - Gaming news\n"
-                        "• food - Food and culinary news\n"
-                        "• travel - Travel and tourism\n"
-                        "• fashion - Fashion news\n"
-                        "• crypto - Cryptocurrency news\n"
-                        "• general - General news\n\n"
+                        "• business\n"
+                        "• entertainment\n"
+                        "• technology\n"
+                        "• sports\n"
+                        "• science\n"
+                        "• health\n"
+                        "• politics\n"
+                        "• environment\n"
+                        "• education\n"
+                        "• automotive\n"
+                        "• gaming\n"
+                        "• food\n"
+                        "• travel\n"
+                        "• fashion\n"
+                        "• crypto\n"
+                        "• general\n\n"
                         "**Example:** `/category technology 3`"
                     )
                 )
@@ -172,19 +162,6 @@ async def setup_commands(bot: commands.Bot):
                         "**Example:** `/dailynews on`"
                     )
                 )
-            elif command == "bookmark":
-                embed = discord.Embed(
-                    title="📰 Help: /bookmark",
-                    color=discord.Color.blue(),
-                    description=(
-                        "Bookmark a news article for later reading.\n\n"
-                        "**Usage:** `/bookmark <url> <title>`\n\n"
-                        "**Parameters:**\n"
-                        "• url: The article URL\n"
-                        "• title: A title for the bookmark\n\n"
-                        "**Example:** `/bookmark https://example.com/article \"Important News\"`"
-                    )
-                )
             elif command == "search":
                 embed = discord.Embed(
                     title="📰 Help: /search",
@@ -198,43 +175,6 @@ async def setup_commands(bot: commands.Bot):
                         "**Example:** `/search artificial intelligence 3`"
                     )
                 )
-            elif command == "summarize":
-                embed = discord.Embed(
-                    title="📰 Help: /summarize",
-                    color=discord.Color.blue(),
-                    description=(
-                        "Get a summary of a news article.\n\n"
-                        "**Usage:** `/summarize <url> [length] [style]`\n\n"
-                        "**Parameters:**\n"
-                        "• url: The article URL to summarize\n"
-                        "• length (optional): Summary length (default: medium)\n"
-                        "• style (optional): Summary format (default: paragraph)\n\n"
-                        "**Available lengths:**\n"
-                        "• short - 2 sentences\n"
-                        "• medium - 3 sentences\n"
-                        "• long - 5 sentences\n\n"
-                        "**Available styles:**\n"
-                        "• paragraph - Regular text format\n"
-                        "• bullet - Bullet point format\n"
-                        "• numbered - Numbered list format\n\n"
-                        "**Examples:**\n"
-                        "• `/summarize https://example.com/article`\n"
-                        "• `/summarize https://example.com/article length:long style:bullet`\n"
-                        "• `/summarize https://example.com/article style:numbered`"
-                    )
-                )
-            elif command == "localnews":
-                embed = discord.Embed(
-                    title="📰 Help: /localnews",
-                    color=discord.Color.blue(),
-                    description=(
-                        "Get local news for a specific place.\n\n"
-                        "**Usage:** `/localnews <place>`\n\n"
-                        "**Parameters:**\n"
-                        "• place: City or region name\n\n"
-                        "**Example:** `/localnews New York`"
-                    )
-                )
             else:
                 embed = discord.Embed(
                     title="❌ Command Not Found",
@@ -243,14 +183,11 @@ async def setup_commands(bot: commands.Bot):
                 )
             await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
-            # General help menu
             embed = discord.Embed(
                 title="📰 NewsBot Help",
                 color=discord.Color.blue(),
                 description=(
-                    "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
-                    "**Local:** `/localnews`\n"
-                    "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
+                    "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`\n"
                     "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
                     "**Help:** `/help`\n\n"
                     "Use `/help <command>` to get detailed help for a specific command.\n"
@@ -258,8 +195,6 @@ async def setup_commands(bot: commands.Bot):
                 )
             )
             await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
-
-    # ...your other commands, unchanged...
 
     # Start the cache clearing task
     clear_news_cache.start()
