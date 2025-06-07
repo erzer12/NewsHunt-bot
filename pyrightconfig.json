@@ -1,0 +1,21 @@
+{
+    "include": [
+        "*.py",
+        "**/*.py"
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*"
+    ],
+    "ignore": [
+        "venv",
+        ".venv",
+        "env",
+        ".env"
+    ],
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    "pythonVersion": "3.8",
+    "typeCheckingMode": "basic"
+} 
