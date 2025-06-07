@@ -14,7 +14,7 @@ from commands import setup_commands, start_scheduled_tasks
 
 # --- Shorter logging configuration ---
 logging.basicConfig(
-    level=logging.WARNING,  # Only warnings and errors will show up
+    level=logging.WARNING,
     format='[%(levelname)s] %(name)s: %(message)s'
 )
 logging.getLogger('discord').setLevel(logging.WARNING)
