@@ -1,17 +1,15 @@
 # NewsHunt
 
-A modular Discord bot for international and local news with automatic translation, country/language preferences, bookmarks, daily news, onboarding, and Render deployment support.
+A modular Discord bot for international news with country/language preferences, daily news, onboarding, and Render deployment support.
 
 ---
 
 ## Features
 - Get top headlines from NewsAPI in your preferred language.
-- Fetch local/city news via Google News RSS, translated to your language.
 - Set country and preferred languages.
-- Bookmarks, daily news, onboarding, and more.
+- Daily news, onboarding, and more.
 - Interactive paginator for browsing news.
 - Admin channel setup for daily news.
-- Summarize articles.
 - Search, trending, flash/breaking news.
 - Runs as a web service for Render deployment (Flask for health checks).
 
@@ -30,11 +28,7 @@ Tested on **Python 3.10+**
 - discord.py ≥ 2.3
 - pymongo ≥ 4.5
 - requests ≥ 2.31
-- feedparser ≥ 6.0
-- googletrans == 4.0.0rc1
 - flask ≥ 2.2
-- newspaper3k ≥ 0.2
-- nltk ≥ 3.8
 
 See `requirements.txt` for details.
 
@@ -42,19 +36,14 @@ See `requirements.txt` for details.
 
 ## Commands
 
-- `/news` — Top headlines (auto-translated)
-- `/localnews <place>` — Local news (auto-translated)
+- `/news` — Top headlines
 - `/setcountry <country>` — Set country
 - `/setlang <codes>` — Set preferred language codes (comma-separated)
-- `/bookmark <url> <title>` — Bookmark an article
-- `/bookmarks` — List bookmarks
-- `/remove_bookmark <index>` — Remove bookmark by index (starts at 1)
 - `/dailynews <true|false>` — Enable/disable daily news DM
 - `/category <cat>` — Category news
 - `/trending` — Trending news
 - `/flashnews` — Breaking news
 - `/search <keyword>` — Search news
-- `/summarize <url>` — Summarize article
 - `/setchannel <channel>` — Set server channel for daily news (admin)
 - `/help` — Show all bot commands (also triggers onboarding once per user)
 
@@ -70,28 +59,13 @@ See `requirements.txt` for details.
 
 ## Version History & Logs
 
+### v1.4.0 (2025-06-07)
+- Removed translation, bookmarks, summarize, and local news features for a simpler codebase.
+- Help and onboarding updated.
+- Logging shortened by default.
+
 ### v1.3.0 (2025-05-18)
-- Full modular rewrite
-- One-time onboarding per user
-- Slash command autocomplete (category/country)
-- Interactive paginator for news browsing
-- Summarizer command and button
-- Admin-only `/setchannel`
-- Trending, flash, category, and search commands
-- Command logging (see below)
-
-### v1.2.0
-- Bookmarks overhaul (add/remove/list)
-- Daily news scheduling with MongoDB
-- Local news via RSS
-
-### v1.1.0
-- Automatic translation for all news
-- Per-user country/language preferences
-
-### v1.0.0
-- Initial version
-- Top headlines, onboarding, basic commands
+- Full modular rewrite, onboarding, autocomplete, paginator, admin-only `/setchannel`, trending, flash, category, and search commands.
 
 ---
 
@@ -110,18 +84,3 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s"
 )
 logging.info("Bot started.")
-```
-
----
-
-## Render
-
-Keep `render.yaml` in the root for automatic deployment.
-
----
-
-## License
-
-MIT (add your details here)
-
----
