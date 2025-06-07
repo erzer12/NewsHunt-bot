@@ -82,7 +82,8 @@ class NewsBot(commands.Bot):
         print("✅ Commands setup complete")
 
     async def on_ready(self):
-        print(f"✅ Logged in as {self.user.name}")
+        if self.user:
+            print(f"✅ Logged in as {self.user.name}")
         print("🔄 Syncing commands...")
         try:
             synced = await self.tree.sync()

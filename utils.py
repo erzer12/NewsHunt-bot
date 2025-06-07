@@ -63,7 +63,7 @@ def extract_metadata(article: Dict) -> Dict:
     """Extract and clean article metadata"""
     metadata = {
         "title": article.get("title", "No Title"),
-        "url": clean_url(article.get("url") or article.get("link")),
+        "url": clean_url(str(article.get("url") or article.get("link") or "")),
         "description": article.get("description") or article.get("summary", ""),
         "source": article.get("source", {}).get("name", "Unknown"),
         "author": article.get("author"),
@@ -74,7 +74,7 @@ def extract_metadata(article: Dict) -> Dict:
     }
     return metadata
 
-async def create_news_embed(article, title_prefix):
+async def create_news_embed(article: Dict, title_prefix: str, style: str = "default") -> discord.Embed:
     try:
         metadata = article
         description = metadata.get('description', '')

@@ -16,8 +16,8 @@ class NewsPaginator(View):
         self.user_id = user_id
         self.is_rss = is_rss
         self.index = 0
-        self.style = "default"  # default, compact, detailed
-        self.sort_by = "date"  # date, title, source
+        self.style = "default"
+        self.sort_by = "date"
         self.filter_category = None
 
         # Navigation buttons
@@ -81,16 +81,16 @@ class NewsPaginator(View):
         self.add_item(self.style_select)
         self.add_item(self.sort_select)
 
-    def get_embed(self):
+    async def update_message(self, interaction):
+        embed = await self.get_embed()
+        embed.set_footer(text=f"Article {self.index + 1} of {len(self.articles)}")
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def get_embed(self):
         if not self.articles:
             return discord.Embed(title="No Articles", description="No articles to display.")
         art = self.articles[self.index]
-        return create_news_embed(art, style=self.style)
-
-    async def update_message(self, interaction):
-        embed = self.get_embed()
-        embed.set_footer(text=f"Article {self.index + 1} of {len(self.articles)}")
-        await interaction.response.edit_message(embed=embed, view=self)
+        return await create_news_embed(art, f"Article {self.index + 1}/{len(self.articles)}", style=self.style)
 
     async def first_article(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
@@ -127,22 +127,26 @@ class NewsPaginator(View):
             
         # Create a modal for article selection
         class JumpModal(Modal, title="Jump to Article"):
-            number = TextInput(
-                label="Article Number",
-                placeholder=f"Enter a number between 1 and {len(self.articles)}",
-                min_length=1,
-                max_length=2
-            )
+            def __init__(self, parent):
+                super().__init__()
+                self.parent = parent
+                self.number = TextInput(
+                    label="Article Number",
+                    placeholder=f"Enter a number between 1 and {len(parent.articles)}",
+                    min_length=1,
+                    max_length=2
+                )
+                self.add_item(self.number)
             
             async def on_submit(self, interaction: discord.Interaction):
                 try:
                     num = int(self.number.value)
-                    if 1 <= num <= len(self.articles):
-                        self.index = num - 1
-                        await self.update_message(interaction)
+                    if 1 <= num <= len(self.parent.articles):
+                        self.parent.index = num - 1
+                        await self.parent.update_message(interaction)
                     else:
                         await interaction.response.send_message(
-                            f"Please enter a number between 1 and {len(self.articles)}",
+                            f"Please enter a number between 1 and {len(self.parent.articles)}",
                             ephemeral=True
                         )
                 except ValueError:
@@ -151,7 +155,7 @@ class NewsPaginator(View):
                         ephemeral=True
                     )
         
-        await interaction.response.send_modal(JumpModal())
+        await interaction.response.send_modal(JumpModal(self))
 
     async def summarize_article(self, interaction: discord.Interaction):
         art = self.articles[self.index]
@@ -159,18 +163,23 @@ class NewsPaginator(View):
         
         # Create a modal for summary options
         class SummaryModal(Modal, title="Summary Options"):
-            length = TextInput(
-                label="Length",
-                placeholder="short, medium, or long",
-                default="medium",
-                required=True
-            )
-            style = TextInput(
-                label="Style",
-                placeholder="paragraph, bullet, or numbered",
-                default="paragraph",
-                required=True
-            )
+            def __init__(self, parent):
+                super().__init__()
+                self.parent = parent
+                self.length = TextInput(
+                    label="Length",
+                    placeholder="short, medium, or long",
+                    default="medium",
+                    required=True
+                )
+                self.style = TextInput(
+                    label="Style",
+                    placeholder="paragraph, bullet, or numbered",
+                    default="paragraph",
+                    required=True
+                )
+                self.add_item(self.length)
+                self.add_item(self.style)
             
             async def on_submit(self, interaction: discord.Interaction):
                 # Show progress embed
@@ -191,28 +200,33 @@ class NewsPaginator(View):
                         "Translating summary...",
                         0.5
                     )
-                    await interaction.message.edit(embed=progress_embed)
+                    await interaction.edit_original_response(embed=progress_embed)
                     
                     # Translate summary
-        langs = art.get("language_codes") or ["en"]
-                    translated = translate_text(result["summary"], langs[0])
+                    langs = art.get("language_codes") or ["en"]
+                    summary = result["summary"]
+                    translated = await translate_text(summary, langs[0]) if summary else summary
+                    translated_text = translated if translated else summary
+                    if not isinstance(translated_text, str):
+                        translated_text = str(translated_text) if translated_text else "No summary available"
                     
                     # Create final embed
                     embed = create_info_embed(
                         "Article Summary",
-                        translated
+                        translated_text
                     )
-                    if result["metadata"] and result["metadata"]["top_image"]:
-                        embed.set_image(url=result["metadata"]["top_image"])
+                    metadata = result.get("metadata")
+                    if isinstance(metadata, dict) and metadata.get("top_image"):
+                        embed.set_image(url=metadata["top_image"])
                     
                     # Update with final result
-                    await interaction.message.edit(embed=embed)
+                    await interaction.edit_original_response(embed=embed)
                 else:
-                    await interaction.message.edit(
-                        embed=create_error_embed("Summary Failed", result["error"])
+                    await interaction.edit_original_response(
+                        embed=create_error_embed("Summary Failed", str(result.get("error", "Unknown error")))
                     )
         
-        await interaction.response.send_modal(SummaryModal())
+        await interaction.response.send_modal(SummaryModal(self))
 
     async def bookmark_article(self, interaction: discord.Interaction):
         art = self.articles[self.index]
@@ -221,25 +235,30 @@ class NewsPaginator(View):
         
         # Create confirmation modal
         class BookmarkModal(Modal, title="Add Bookmark"):
-            note = TextInput(
-                label="Note (optional)",
-                placeholder="Add a note to this bookmark",
-                required=False,
-                max_length=200
-            )
+            def __init__(self, url, title):
+                super().__init__()
+                self.url = url
+                self.title = title
+                self.note = TextInput(
+                    label="Note (optional)",
+                    placeholder="Add a note to this bookmark",
+                    required=False,
+                    max_length=200
+                )
+                self.add_item(self.note)
             
             async def on_submit(self, interaction: discord.Interaction):
-                add_bookmark(interaction.user.id, url, title, self.note.value)
+                add_bookmark(interaction.user.id, self.url, self.title)
                 await interaction.response.send_message(
                     embed=create_success_embed(
                         "Bookmark Added",
-                        f"✅ Added '{title}' to your bookmarks" + 
+                        f"✅ Added '{self.title}' to your bookmarks" + 
                         (f"\nNote: {self.note.value}" if self.note.value else "")
                     ),
                     ephemeral=True
                 )
         
-        await interaction.response.send_modal(BookmarkModal())
+        await interaction.response.send_modal(BookmarkModal(url, title))
 
     async def share_article(self, interaction: discord.Interaction):
         art = self.articles[self.index]
@@ -248,8 +267,9 @@ class NewsPaginator(View):
         
         # Create a share menu
         class ShareMenu(View):
-            def __init__(self):
+            def __init__(self, user_id):
                 super().__init__(timeout=60)
+                self.user_id = user_id
                 
             @discord.ui.button(label="Share in Channel", style=discord.ButtonStyle.primary)
             async def share_channel(self, button_interaction: discord.Interaction, button: discord.ui.Button):
@@ -278,12 +298,15 @@ class NewsPaginator(View):
                     return
                     
                 class ShareNoteModal(Modal, title="Share with Note"):
-                    note = TextInput(
-                        label="Note",
-                        placeholder="Add a note to share with the article",
-                        required=True,
-                        max_length=200
-                    )
+                    def __init__(self):
+                        super().__init__()
+                        self.note = TextInput(
+                            label="Note",
+                            placeholder="Add a note to share with the article",
+                            required=True,
+                            max_length=200
+                        )
+                        self.add_item(self.note)
                     
                     async def on_submit(self, interaction: discord.Interaction):
                         await interaction.response.send_message(
@@ -295,7 +318,7 @@ class NewsPaginator(View):
         
         await interaction.response.send_message(
             "Choose how to share this article:",
-            view=ShareMenu(),
+            view=ShareMenu(interaction.user.id),
             ephemeral=True
         )
 
@@ -303,25 +326,27 @@ class NewsPaginator(View):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("Not your paginator.", ephemeral=True)
             return
-        self.style = interaction.data["values"][0]
-        await self.update_message(interaction)
+        if hasattr(interaction, 'data') and isinstance(interaction.data, dict) and "values" in interaction.data:
+            self.style = interaction.data["values"][0]
+            await self.update_message(interaction)
 
     async def change_sort(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("Not your paginator.", ephemeral=True)
             return
             
-        sort_by = interaction.data["values"][0]
-        if sort_by == "date":
-            self.articles.sort(key=lambda x: x.get("publishedAt") or x.get("published", ""), reverse=True)
-        elif sort_by == "title":
-            self.articles.sort(key=lambda x: x.get("title", "").lower())
-        elif sort_by == "source":
-            self.articles.sort(key=lambda x: x.get("source", {}).get("name", "").lower())
-            
-        self.sort_by = sort_by
-        self.index = 0  # Reset to first article
-        await self.update_message(interaction)
+        if hasattr(interaction, 'data') and isinstance(interaction.data, dict) and "values" in interaction.data:
+            sort_by = interaction.data["values"][0]
+            if sort_by == "date":
+                self.articles.sort(key=lambda x: x.get("publishedAt") or x.get("published", ""), reverse=True)
+            elif sort_by == "title":
+                self.articles.sort(key=lambda x: x.get("title", "").lower())
+            elif sort_by == "source":
+                self.articles.sort(key=lambda x: x.get("source", {}).get("name", "").lower())
+                
+            self.sort_by = sort_by
+            self.index = 0  # Reset to first article
+            await self.update_message(interaction)
 
     async def delete_msg(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
@@ -335,280 +360,34 @@ class NewsPaginator(View):
         )
         
         class ConfirmDelete(View):
-            def __init__(self):
+            def __init__(self, user_id):
                 super().__init__(timeout=30)
+                self.user_id = user_id
                 
             @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
             async def confirm(self, button_interaction: discord.Interaction, button: discord.ui.Button):
                 if button_interaction.user.id != self.user_id:
                     await button_interaction.response.send_message("Not your message.", ephemeral=True)
                     return
-        try:
-            await interaction.message.delete()
-        except discord.HTTPException:
-                    await button_interaction.response.send_message(
-                        "Message already deleted.",
-                        ephemeral=True
-                    )
+                if button_interaction.message:
+                    try:
+                        await button_interaction.message.delete()
+                    except discord.HTTPException:
+                        await button_interaction.response.send_message(
+                            "Message already deleted.",
+                            ephemeral=True
+                        )
                 
             @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
             async def cancel(self, button_interaction: discord.Interaction, button: discord.ui.Button):
                 if button_interaction.user.id != self.user_id:
                     await button_interaction.response.send_message("Not your message.", ephemeral=True)
                     return
-                await button_interaction.message.delete()
+                if button_interaction.message:
+                    await button_interaction.message.delete()
         
         await interaction.response.send_message(
             embed=confirm_embed,
-            view=ConfirmDelete(),
+            view=ConfirmDelete(interaction.user.id),
             ephemeral=True
         )
-
-class HelpMenuView(View):
-    def __init__(self):
-        super().__init__(timeout=300)  # 5 minutes timeout
-        
-        # Main category buttons
-        self.show_all_btn = Button(label="Show All", style=discord.ButtonStyle.primary, row=0)
-        self.news_btn = Button(label="News Commands", style=discord.ButtonStyle.secondary, row=0)
-        self.bookmark_btn = Button(label="Bookmark Commands", style=discord.ButtonStyle.secondary, row=0)
-        self.prefs_btn = Button(label="Preferences", style=discord.ButtonStyle.secondary, row=0)
-        self.local_btn = Button(label="Local/RSS", style=discord.ButtonStyle.secondary, row=0)
-        
-        # Additional help buttons
-        self.examples_btn = Button(label="Examples", style=discord.ButtonStyle.secondary, row=1)
-        self.tips_btn = Button(label="Tips & Tricks", style=discord.ButtonStyle.secondary, row=1)
-        self.faq_btn = Button(label="FAQ", style=discord.ButtonStyle.secondary, row=1)
-        self.search_btn = Button(label="Search Help", style=discord.ButtonStyle.secondary, row=1)
-
-        # Set callbacks
-        self.show_all_btn.callback = self.show_all
-        self.news_btn.callback = self.show_news
-        self.bookmark_btn.callback = self.show_bookmark
-        self.prefs_btn.callback = self.show_prefs
-        self.local_btn.callback = self.show_local
-        self.examples_btn.callback = self.show_examples
-        self.tips_btn.callback = self.show_tips
-        self.faq_btn.callback = self.show_faq
-        self.search_btn.callback = self.show_search
-
-        # Add items
-        self.add_item(self.show_all_btn)
-        self.add_item(self.news_btn)
-        self.add_item(self.bookmark_btn)
-        self.add_item(self.prefs_btn)
-        self.add_item(self.local_btn)
-        self.add_item(self.examples_btn)
-        self.add_item(self.tips_btn)
-        self.add_item(self.faq_btn)
-        self.add_item(self.search_btn)
-
-    def get_help_embed(self, section):
-        embed = discord.Embed(title="📰 NewsBot Help", color=discord.Color.blue())
-        
-        if section == "all":
-            embed.description = (
-                "**News Commands:**\n"
-                "• `/news [count]` — Get top headlines\n"
-                "• `/category <cat>` — Get category news\n"
-                "• `/trending` — Get trending news\n"
-                "• `/flashnews` — Get breaking news\n"
-                "• `/search <query>` — Search news\n"
-                "• `/summarize <url>` — Summarize article\n\n"
-                "**Local News:**\n"
-                "• `/localnews <place>` — Get local news\n\n"
-                "**Bookmark Commands:**\n"
-                "• `/bookmark <url> <title>` — Save article\n"
-                "• `/bookmarks` — List bookmarks\n"
-                "• `/remove_bookmark <index>` — Remove bookmark\n\n"
-                "**Preferences:**\n"
-                "• `/setcountry <code>` — Set country\n"
-                "• `/setlang <codes>` — Set language(s)\n"
-                "• `/dailynews <on/off>` — Toggle daily news\n"
-                "• `/setchannel <channel>` — Set news channel"
-            )
-        elif section == "news":
-            embed.description = (
-                "**News Commands:**\n\n"
-                "`/news [count]`\n"
-                "• Get today's top headlines\n"
-                "• Optional: specify number of articles (default: 5)\n"
-                "• Example: `/news 10` for 10 articles\n\n"
-                "`/category <cat> [count]`\n"
-                "• Get news by category\n"
-                "• Categories: business, tech, sports, etc.\n"
-                "• Optional: specify number of articles\n"
-                "• Example: `/category technology 3`\n\n"
-                "`/trending`\n"
-                "• Get currently trending news\n"
-                "• Shows most popular articles\n"
-                "• Updates every hour\n\n"
-                "`/flashnews`\n"
-                "• Get breaking news\n"
-                "• Shows latest urgent updates\n"
-                "• Real-time updates\n\n"
-                "`/search <query> [count]`\n"
-                "• Search news by keyword\n"
-                "• Optional: specify number of results\n"
-                "• Example: `/search AI 5`\n\n"
-                "`/summarize <url> [length] [style]`\n"
-                "• Summarize any news article\n"
-                "• Length: short, medium, long\n"
-                "• Style: paragraph, bullet, numbered\n"
-                "• Example: `/summarize https://example.com/article length:long style:bullet`"
-            )
-        elif section == "bookmark":
-            embed.description = (
-                "**Bookmark Commands:**\n\n"
-                "`/bookmark <url> <title>`\n"
-                "• Save an article for later\n"
-                "• Add a custom title\n"
-                "• Works with any news URL\n"
-                "• Example: `/bookmark https://example.com/article My Article`\n\n"
-                "`/bookmarks`\n"
-                "• List all your bookmarks\n"
-                "• Shows titles and links\n"
-                "• Click to open articles\n"
-                "• Sorted by date added\n\n"
-                "`/remove_bookmark <index>`\n"
-                "• Remove a bookmark\n"
-                "• Use index from /bookmarks list\n"
-                "• Example: `/remove_bookmark 3`"
-            )
-        elif section == "prefs":
-            embed.description = (
-                "**Preference Settings:**\n\n"
-                "`/setcountry <code>`\n"
-                "• Set your news country\n"
-                "• Examples: us, gb, in, au\n"
-                "• Affects all news commands\n"
-                "• Example: `/setcountry us`\n\n"
-                "`/setlang <codes>`\n"
-                "• Set preferred language(s)\n"
-                "• Comma-separated codes\n"
-                "• Example: en,es,fr\n"
-                "• Supports multiple languages\n\n"
-                "`/dailynews <on/off>`\n"
-                "• Toggle daily news digest\n"
-                "• Get news in your DMs\n"
-                "• Customizable delivery time\n"
-                "• Example: `/dailynews on`\n\n"
-                "`/setchannel <channel>`\n"
-                "• Set server news channel\n"
-                "• Admin only command\n"
-                "• For server-wide news\n"
-                "• Example: `/setchannel #news`"
-            )
-        elif section == "local":
-            embed.description = (
-                "**Local News Commands:**\n\n"
-                "`/localnews <place>`\n"
-                "• Get local news for a place\n"
-                "• City or region name\n"
-                "• Uses RSS feeds\n"
-                "• Auto-translated to your language\n"
-                "• Example: `/localnews New York`\n\n"
-                "Features:\n"
-                "• Real-time local updates\n"
-                "• Multiple sources\n"
-                "• Customizable region\n"
-                "• Language support"
-            )
-        elif section == "examples":
-            embed.description = (
-                "**Command Examples:**\n\n"
-                "1. Get 3 top headlines:\n"
-                "`/news 3`\n\n"
-                "2. Get tech news:\n"
-                "`/category technology`\n\n"
-                "3. Search AI news:\n"
-                "`/search artificial intelligence`\n\n"
-                "4. Set multiple languages:\n"
-                "`/setlang en,es,fr`\n\n"
-                "5. Summarize with style:\n"
-                "`/summarize https://example.com/article length:long style:bullet`\n\n"
-                "6. Get local news:\n"
-                "`/localnews Tokyo`\n\n"
-                "7. Save a bookmark:\n"
-                "`/bookmark https://example.com/article Important News`"
-            )
-        elif section == "tips":
-            embed.description = (
-                "**Tips & Tricks:**\n\n"
-                "• Use `/news` with different counts to get more or fewer articles\n"
-                "• Combine `/search` with categories for better results\n"
-                "• Use `/summarize` with different styles for better readability\n"
-                "• Set multiple languages to get news in different languages\n"
-                "• Use `/bookmark` to save interesting articles for later\n"
-                "• Enable daily news to never miss important updates\n"
-                "• Use `/localnews` to stay updated with your area\n"
-                "• Try different summary lengths for different needs\n"
-                "• Use bookmarks to create your own news collection\n"
-                "• Combine commands for better results"
-            )
-        elif section == "faq":
-            embed.description = (
-                "**Frequently Asked Questions:**\n\n"
-                "Q: How do I change my country?\n"
-                "A: Use `/setcountry` followed by the country code\n\n"
-                "Q: Can I get news in multiple languages?\n"
-                "A: Yes! Use `/setlang` with comma-separated language codes\n\n"
-                "Q: How do I get daily news updates?\n"
-                "A: Use `/dailynews on` to enable daily news in your DMs\n\n"
-                "Q: Can I summarize any news article?\n"
-                "A: Yes! Use `/summarize` with any news URL\n\n"
-                "Q: How do I remove a bookmark?\n"
-                "A: Use `/bookmarks` to see the list, then `/remove_bookmark` with the number\n\n"
-                "Q: What's the difference between /news and /trending?\n"
-                "A: /news shows latest articles, while /trending shows most popular ones\n\n"
-                "Q: Can I get news from multiple sources?\n"
-                "A: Yes! The bot aggregates news from various reliable sources"
-            )
-        elif section == "search":
-            embed.description = (
-                "**Search Help:**\n\n"
-                "Basic Search:\n"
-                "• `/search <query>` - Search for news\n"
-                "• Example: `/search AI`\n\n"
-                "Advanced Search:\n"
-                "• Use quotes for exact phrases\n"
-                "• Example: `/search \"artificial intelligence\"`\n\n"
-                "Filtering:\n"
-                "• Add category: `/search AI category:technology`\n"
-                "• Add date: `/search AI date:today`\n"
-                "• Add source: `/search AI source:techcrunch`\n\n"
-                "Tips:\n"
-                "• Use specific keywords\n"
-                "• Combine filters\n"
-                "• Try different phrasings\n"
-                "• Use quotes for exact matches"
-            )
-        
-        return embed
-
-    async def show_all(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("all"), view=self)
-
-    async def show_news(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("news"), view=self)
-
-    async def show_bookmark(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("bookmark"), view=self)
-
-    async def show_prefs(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("prefs"), view=self)
-
-    async def show_local(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("local"), view=self)
-
-    async def show_examples(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("examples"), view=self)
-
-    async def show_tips(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("tips"), view=self)
-
-    async def show_faq(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("faq"), view=self)
-        
-    async def show_search(self, interaction):
-        await interaction.response.edit_message(embed=self.get_help_embed("search"), view=self)

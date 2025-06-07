@@ -215,40 +215,40 @@ async def setup_commands(bot: commands.Bot):
             await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
             # General help menu
-            embed = discord.Embed(
-                title="📰 NewsBot Help",
-                color=discord.Color.blue(),
-                description=(
-                    "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
-                    "**Local:** `/localnews`\n"
-                    "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
-                    "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
+        embed = discord.Embed(
+            title="📰 NewsBot Help",
+            color=discord.Color.blue(),
+            description=(
+                "**News:** `/news`, `/category`, `/trending`, `/flashnews`, `/search`, `/summarize`\n"
+                "**Local:** `/localnews`\n"
+                "**Bookmarks:** `/bookmark`, `/bookmarks`, `/remove_bookmark`\n"
+                "**Preferences:** `/setcountry`, `/setlang`, `/dailynews`, `/setchannel`\n"
                     "**Help:** `/help`\n\n"
                     "Use `/help <command>` to get detailed help for a specific command.\n"
                     "Example: `/help setcountry`"
-                )
             )
-            await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
+        )
+        await interaction.response.send_message(embed=embed, view=HelpMenuView(), ephemeral=True)
 
     @tree.command(name="news", description="Get today's top headlines")
     @require_registration()
     async def news(interaction: discord.Interaction, count: int = 5):
         try:
             await interaction.response.defer(ephemeral=False)
-            country = get_user_country(interaction.user.id) or "us"
-            langs = get_user_languages(interaction.user.id)
-            language = langs[0]
+        country = get_user_country(interaction.user.id) or "us"
+        langs = get_user_languages(interaction.user.id)
+        language = langs[0]
             
-            articles = fetch_top_headlines(country, count)
-            if articles:
-                for art in articles:
-                    art["title"] = translate_text(art["title"], language)
-                    art["description"] = translate_text(art.get("description", ""), language)
-                view = NewsPaginator(articles, interaction.user.id)
-                embed = create_news_embed(articles[0], f"Article 1/{len(articles)}")
-                await interaction.followup.send(embed=embed, view=view)
-            else:
-                await interaction.followup.send("❌ No news found.")
+        articles = fetch_top_headlines(country, count)
+        if articles:
+            for art in articles:
+                art["title"] = translate_text(art["title"], language)
+                art["description"] = translate_text(art.get("description", ""), language)
+            view = NewsPaginator(articles, interaction.user.id)
+            embed = create_news_embed(articles[0], f"Article 1/{len(articles)}")
+            await interaction.followup.send(embed=embed, view=view)
+        else:
+            await interaction.followup.send("❌ No news found.")
         except discord.errors.NotFound:
             logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
@@ -264,19 +264,19 @@ async def setup_commands(bot: commands.Bot):
     async def category(interaction: discord.Interaction, category: str, count: int = 5):
         try:
             await interaction.response.defer(ephemeral=False)
-            langs = get_user_languages(interaction.user.id)
-            language = langs[0]
+        langs = get_user_languages(interaction.user.id)
+        language = langs[0]
             
-            articles = fetch_news_by_category(category, count)
-            if articles:
-                for art in articles:
-                    art["title"] = translate_text(art["title"], language)
-                    art["description"] = translate_text(art.get("description", ""), language)
-                view = NewsPaginator(articles, interaction.user.id)
-                embed = create_news_embed(articles[0], f"Category: {category}")
-                await interaction.followup.send(embed=embed, view=view)
-            else:
-                await interaction.followup.send("❌ No news found in this category.")
+        articles = fetch_news_by_category(category, count)
+        if articles:
+            for art in articles:
+                art["title"] = translate_text(art["title"], language)
+                art["description"] = translate_text(art.get("description", ""), language)
+            view = NewsPaginator(articles, interaction.user.id)
+            embed = create_news_embed(articles[0], f"Category: {category}")
+            await interaction.followup.send(embed=embed, view=view)
+        else:
+            await interaction.followup.send("❌ No news found in this category.")
         except discord.errors.NotFound:
             logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
@@ -291,19 +291,19 @@ async def setup_commands(bot: commands.Bot):
     async def trending(interaction: discord.Interaction, count: int = 5):
         try:
             await interaction.response.defer(ephemeral=False)
-            langs = get_user_languages(interaction.user.id)
-            language = langs[0]
+        langs = get_user_languages(interaction.user.id)
+        language = langs[0]
             
-            articles = fetch_trending_news(count)
-            if articles:
-                for art in articles:
-                    art["title"] = translate_text(art["title"], language)
-                    art["description"] = translate_text(art.get("description", ""), language)
-                view = NewsPaginator(articles, interaction.user.id)
-                embed = create_news_embed(articles[0], f"Trending News")
-                await interaction.followup.send(embed=embed, view=view)
-            else:
-                await interaction.followup.send("❌ No trending news found.")
+        articles = fetch_trending_news(count)
+        if articles:
+            for art in articles:
+                art["title"] = translate_text(art["title"], language)
+                art["description"] = translate_text(art.get("description", ""), language)
+            view = NewsPaginator(articles, interaction.user.id)
+            embed = create_news_embed(articles[0], f"Trending News")
+            await interaction.followup.send(embed=embed, view=view)
+        else:
+            await interaction.followup.send("❌ No trending news found.")
         except discord.errors.NotFound:
             logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
@@ -318,19 +318,19 @@ async def setup_commands(bot: commands.Bot):
     async def flashnews(interaction: discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=False)
-            country = get_user_country(interaction.user.id) or "us"
-            langs = get_user_languages(interaction.user.id)
-            language = langs[0]
+        country = get_user_country(interaction.user.id) or "us"
+        langs = get_user_languages(interaction.user.id)
+        language = langs[0]
             
-            articles = fetch_top_headlines(country, 5, breaking=True)
-            if articles:
-                for art in articles:
-                    art["title"] = translate_text(art["title"], language)
-                    art["description"] = translate_text(art.get("description", ""), language)
-                embed = create_news_embed(articles[0], "🚨 BREAKING NEWS")
-                await interaction.followup.send(embed=embed)
-            else:
-                await interaction.followup.send("❌ No breaking news available.")
+        articles = fetch_top_headlines(country, 5, breaking=True)
+        if articles:
+            for art in articles:
+                art["title"] = translate_text(art["title"], language)
+                art["description"] = translate_text(art.get("description", ""), language)
+            embed = create_news_embed(articles[0], "🚨 BREAKING NEWS")
+            await interaction.followup.send(embed=embed)
+        else:
+            await interaction.followup.send("❌ No breaking news available.")
         except discord.errors.NotFound:
             logger.warning("Interaction not found - it may have timed out")
         except Exception as e:
@@ -344,8 +344,8 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def search(interaction: discord.Interaction, query: str, count: int = 5):
         try:
-            await interaction.response.defer()
-            articles = fetch_news_by_query(query, count)
+        await interaction.response.defer()
+        articles = fetch_news_by_query(query, count)
             if not articles:
                 await interaction.followup.send("No articles found for your search query.", ephemeral=True)
                 return
@@ -371,7 +371,7 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def summarize(interaction: discord.Interaction, url: str, length: str = "medium"):
         try:
-            await interaction.response.defer()
+        await interaction.response.defer()
             
             # Validate length parameter
             valid_lengths = ["short", "medium", "long"]
@@ -383,8 +383,8 @@ async def setup_commands(bot: commands.Bot):
                 return
             
             # Get user's preferred language
-            langs = get_user_languages(interaction.user.id)
-            language = langs[0]
+        langs = get_user_languages(interaction.user.id)
+        language = langs[0]
             
             # Get summary
             result = summarize_article(url, length)
@@ -446,7 +446,7 @@ async def setup_commands(bot: commands.Bot):
             # Add footer with length info
             embed.set_footer(text=f"Summary length: {length} | Translated to: {language}")
             
-            await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
             logger.error(f"Error in summarize command: {str(e)}\n{traceback.format_exc()}")
             await interaction.followup.send("An error occurred while summarizing the article.", ephemeral=True)
@@ -455,20 +455,20 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def localnews(interaction: discord.Interaction, place: str):
         try:
-            await interaction.response.defer()
+        await interaction.response.defer()
             country = get_user_country(interaction.user.id)
-            langs = get_user_languages(interaction.user.id)
+        langs = get_user_languages(interaction.user.id)
             language = langs[0] if langs else "en"
             
             articles = await fetch_rss_news(place=place, max_articles=5, language=language, country=country)
-            if articles:
-                for art in articles:
+        if articles:
+            for art in articles:
                     art["title"] = await translate_text(art["title"], language)
                     art["summary"] = await translate_text(art.get("summary", ""), language)
-                view = NewsPaginator(articles, interaction.user.id, is_rss=True)
-                embed = create_news_embed(articles[0], f"Local News: {place}", is_rss=True)
-                await interaction.followup.send(embed=embed, view=view)
-            else:
+            view = NewsPaginator(articles, interaction.user.id, is_rss=True)
+            embed = create_news_embed(articles[0], f"Local News: {place}", is_rss=True)
+            await interaction.followup.send(embed=embed, view=view)
+        else:
                 await interaction.followup.send(f"❌ No local news found for '{place}'. Try a different location or check your spelling.", ephemeral=True)
         except asyncio.TimeoutError:
             await interaction.followup.send("⏰ The request timed out. Please try again in a few moments.", ephemeral=True)
@@ -480,8 +480,8 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def bookmark(interaction: discord.Interaction, url: str, title: str):
         try:
-            add_bookmark(interaction.user.id, url, title)
-            await interaction.response.send_message("✅ Article bookmarked!", ephemeral=True)
+        add_bookmark(interaction.user.id, url, title)
+        await interaction.response.send_message("✅ Article bookmarked!", ephemeral=True)
         except Exception as e:
             logger.error(f"Error in bookmark command: {str(e)}\n{traceback.format_exc()}")
             await interaction.response.send_message("❌ An error occurred while bookmarking the article.", ephemeral=True)
@@ -490,19 +490,19 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def bookmarks(interaction: discord.Interaction):
         try:
-            marks = get_bookmarks(interaction.user.id)
-            if not marks:
-                await interaction.response.send_message("You have no bookmarks.", ephemeral=True)
-                return
-            embed = discord.Embed(
-                title="🔖 Your Bookmarks",
-                color=discord.Color.teal(),
-                description="\n\n".join(
-                    f"{i+1}. [{title}]({url})"
-                    for i, (url, title) in enumerate(marks)
-                )
+        marks = get_bookmarks(interaction.user.id)
+        if not marks:
+            await interaction.response.send_message("You have no bookmarks.", ephemeral=True)
+            return
+        embed = discord.Embed(
+            title="🔖 Your Bookmarks",
+            color=discord.Color.teal(),
+            description="\n\n".join(
+                f"{i+1}. [{title}]({url})"
+                for i, (url, title) in enumerate(marks)
             )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
             logger.error(f"Error in bookmarks command: {str(e)}\n{traceback.format_exc()}")
             await interaction.response.send_message("❌ An error occurred while fetching your bookmarks.", ephemeral=True)
@@ -511,12 +511,12 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def remove_bookmark_cmd(interaction: discord.Interaction, index: int):
         try:
-            marks = get_bookmarks(interaction.user.id)
-            if 0 < index <= len(marks):
-                removed = remove_bookmark(interaction.user.id, index-1)
-                await interaction.response.send_message("✅ Bookmark removed.", ephemeral=True)
-            else:
-                await interaction.response.send_message("❌ Invalid bookmark index.", ephemeral=True)
+        marks = get_bookmarks(interaction.user.id)
+        if 0 < index <= len(marks):
+            removed = remove_bookmark(interaction.user.id, index-1)
+            await interaction.response.send_message("✅ Bookmark removed.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Invalid bookmark index.", ephemeral=True)
         except Exception as e:
             logger.error(f"Error in remove_bookmark command: {str(e)}\n{traceback.format_exc()}")
             await interaction.response.send_message("❌ An error occurred while removing the bookmark.", ephemeral=True)
@@ -526,8 +526,8 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def setcountry(interaction: discord.Interaction, country: str):
         try:
-            set_user_country(interaction.user.id, country)
-            await interaction.response.send_message(f"✅ Country set to: {country}", ephemeral=True)
+        set_user_country(interaction.user.id, country)
+        await interaction.response.send_message(f"✅ Country set to: {country}", ephemeral=True)
         except Exception as e:
             logger.error(f"Error in setcountry command: {str(e)}\n{traceback.format_exc()}")
             await interaction.response.send_message("❌ An error occurred while setting your country.", ephemeral=True)
@@ -536,8 +536,8 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def setlang(interaction: discord.Interaction, languages: str):
         try:
-            langs = [l.strip() for l in languages.split(",") if l.strip()]
-            set_user_languages(interaction.user.id, langs)
+        langs = [l.strip() for l in languages.split(",") if l.strip()]
+        set_user_languages(interaction.user.id, langs)
             await interaction.response.send_message(f"✅ Language(s) set to: {', '.join(langs)}", ephemeral=True)
         except Exception as e:
             logger.error(f"Error in setlang command: {str(e)}\n{traceback.format_exc()}")
@@ -547,12 +547,12 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def dailynews(interaction: discord.Interaction, enabled: bool):
         try:
-            if enabled:
-                add_user_to_daily_news(interaction.user.id)
-                await interaction.response.send_message("✅ Daily news enabled! You'll get news in your DMs.", ephemeral=True)
-            else:
-                remove_user_from_daily_news(interaction.user.id)
-                await interaction.response.send_message("✅ Daily news disabled.", ephemeral=True)
+        if enabled:
+            add_user_to_daily_news(interaction.user.id)
+            await interaction.response.send_message("✅ Daily news enabled! You'll get news in your DMs.", ephemeral=True)
+        else:
+            remove_user_from_daily_news(interaction.user.id)
+            await interaction.response.send_message("✅ Daily news disabled.", ephemeral=True)
         except Exception as e:
             logger.error(f"Error in dailynews command: {str(e)}\n{traceback.format_exc()}")
             await interaction.response.send_message("❌ An error occurred while toggling daily news.", ephemeral=True)
@@ -562,8 +562,8 @@ async def setup_commands(bot: commands.Bot):
     @require_registration()
     async def setchannel(interaction: discord.Interaction, channel: discord.TextChannel):
         try:
-            set_guild_news_channel(interaction.guild_id, channel.id)
-            await interaction.response.send_message(f"✅ Daily news channel set to: {channel.mention}")
+        set_guild_news_channel(interaction.guild_id, channel.id)
+        await interaction.response.send_message(f"✅ Daily news channel set to: {channel.mention}")
         except Exception as e:
             logger.error(f"Error in setchannel command: {str(e)}\n{traceback.format_exc()}")
             await interaction.response.send_message("❌ An error occurred while setting the news channel.", ephemeral=True)
