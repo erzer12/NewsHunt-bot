@@ -59,8 +59,6 @@ def init_db():
         
         # Create indexes
         db.user_preferences.create_index("user_id", unique=True)
-        db.bookmarks.create_index([("user_id", ASCENDING), ("url", ASCENDING)], unique=True)
-        db.daily_news_users.create_index("user_id", unique=True)
         db.guild_settings.create_index("guild_id", unique=True)
         db.categories.create_index("name", unique=True)
         db.news_cache.create_index([("url", 1)], unique=True)
@@ -123,29 +121,6 @@ def get_user_languages(user_id):
     doc = db.user_preferences.find_one({"user_id": user_id})
     return doc.get("languages", ["en"]) if doc else ["en"]
 
-def add_bookmark(user_id, url, title):
-    db = get_db()
-    db.bookmarks.update_one(
-        {"user_id": user_id, "url": url},
-        {"$set": {"title": title}},
-        upsert=True
-    )
-
-def get_bookmarks(user_id):
-    db = get_db()
-    return [
-        (bm.get("url", ""), bm.get("title", ""))
-        for bm in db.bookmarks.find({"user_id": user_id})
-    ]
-
-def remove_bookmark(user_id, index):
-    db = get_db()
-    bookmarks = list(db.bookmarks.find({"user_id": user_id}))
-    if 0 <= index < len(bookmarks):
-        db.bookmarks.delete_one({"_id": bookmarks[index]["_id"]})
-        return True
-    return False
-
 def get_all_categories():
     db = get_db()
     return {cat["name"]: cat["description"] for cat in db.categories.find({})}
@@ -162,22 +137,6 @@ def get_guild_news_channel(guild_id):
     db = get_db()
     doc = db.guild_settings.find_one({"guild_id": guild_id})
     return doc["news_channel_id"] if doc and "news_channel_id" in doc else None
-
-def add_user_to_daily_news(user_id):
-    db = get_db()
-    db.daily_news_users.update_one(
-        {"user_id": user_id},
-        {"$set": {"user_id": user_id}},
-        upsert=True
-    )
-
-def remove_user_from_daily_news(user_id):
-    db = get_db()
-    db.daily_news_users.delete_one({"user_id": user_id})
-
-def get_daily_news_users():
-    db = get_db()
-    return [u["user_id"] for u in db.daily_news_users.find({})]
 
 def cache_news_article(url: str, article_data: Dict):
     """Cache a news article in the database"""
