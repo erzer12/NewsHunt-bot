@@ -391,3 +391,17 @@ class NewsPaginator(View):
             view=ConfirmDelete(interaction.user.id),
             ephemeral=True
         )
+
+# --- HelpMenuView for help command ---
+
+class HelpMenuView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=180)
+        self.add_item(
+            discord.ui.Button(
+                label="Support / Report Issue",
+                url="https://github.com/erzer12/NewsHunt-bot/issues",
+                style=discord.ButtonStyle.link
+            )
+        )
+        # You can add more buttons (FAQ, Docs, etc.) if needed!
